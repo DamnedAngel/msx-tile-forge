@@ -1,4 +1,4 @@
-﻿#!/bin/env -S python3
+#!/bin/env -S python3
 # -*- coding: utf-8 -*-
 import tkinter as tk
 from tkinter import ttk
@@ -42,6 +42,10 @@ MINIMAP_INITIAL_HEIGHT = 212  # Default desired height of minimap window in pixe
 DRAG_THRESHOLD_PIXELS = 3 # Minimum pixels mouse must move to initiate a drag
 
 RESERVED_BYTES_COUNT = 4 # NEW constant for clarity
+
+# Unicode constant strings
+UP = " \N{BLACK UP-POINTING TRIANGLE}"
+DOWN = " \N{BLACK DOWN-POINTING TRIANGLE}"
 
 # --- Constants for TileUsageWindow (can be placed near other constants or here) ---
 TILE_USAGE_PREVIEW_SIZE = 24 # Pixel size for tile previews in the usage window
@@ -320,10 +324,10 @@ class ColorUsageWindow(tk.Toplevel):
                 continue
 
             current_text = current_heading_options.get("text", "")
-            text_to_set = current_text.replace(" ▲", "").replace(" ▼", "")
+            text_to_set = current_text.replace(UP, "").replace(DOWN, "")
 
             if data_key_for_sort == self.current_sort_column_id:
-                text_to_set += " ▲" if self.current_sort_direction_is_asc else " ▼"
+                text_to_set += UP if self.current_sort_direction_is_asc else DOWN
             
             try:
                 if not self.tree.winfo_exists(): continue
@@ -602,7 +606,7 @@ class TileUsageWindow(tk.Toplevel):
         self.refresh_data()
 
     def _update_header_sort_indicators(self):
-        # Updates the Treeview column header texts with sort indicators (▲/▼)
+        # Updates the Treeview column header texts with sort indicators (UP/DOWN)
         for key, details in self.header_details.items():
             col_id_for_tree = details["id"] # e.g., "#0", "tile_index_val"
             data_key_for_sort = details["data_key"] # e.g., "tile_index"
@@ -615,10 +619,10 @@ class TileUsageWindow(tk.Toplevel):
                 continue
 
             current_text = current_heading_options.get("text", "") # Get current text
-            text_to_set = current_text.replace(" ▲", "").replace(" ▼", "") # Remove old indicators
+            text_to_set = current_text.replace(UP, "").replace(DOWN, "") # Remove old indicators
 
             if data_key_for_sort == self.current_sort_column_id:
-                text_to_set += " ▲" if self.current_sort_direction_is_asc else " ▼"
+                text_to_set += UP if self.current_sort_direction_is_asc else DOWN
             
             try: # Set new text if widget exists
                 if not self.tree.winfo_exists(): continue
@@ -1009,7 +1013,7 @@ class SupertileUsageWindow(tk.Toplevel):
         self.refresh_data()
 
     def _update_header_sort_indicators(self):
-        # Updates the Treeview column header texts with sort indicators (▲/▼)
+        # Updates the Treeview column header texts with sort indicators (UP/DOWN)
         for col_id_key, heading_widget_details in self.header_labels.items():
             # For Treeview internal headers, heading_widget_details is already the result of tree.heading(col_name)
             # We need to reconstruct the base text if it's not stored separately, or assume a convention
@@ -1018,7 +1022,7 @@ class SupertileUsageWindow(tk.Toplevel):
             current_heading_options = self.tree.heading(heading_widget_details["id"]) # Get all options
             current_text = current_heading_options.get("text", "")
 
-            text_to_set = current_text.replace(" ▲", "").replace(" ▼", "")
+            text_to_set = current_text.replace(UP, "").replace(DOWN, "")
             
             # Check if this column is the one currently being sorted
             # Note: self.current_sort_column_id could be "#0" or a data key like "st_index".
@@ -1035,7 +1039,7 @@ class SupertileUsageWindow(tk.Toplevel):
 
 
             if is_this_the_sort_column:
-                text_to_set += " ▲" if self.current_sort_direction_is_asc else " ▼"
+                text_to_set += UP if self.current_sort_direction_is_asc else DOWN
             
             try:
                 self.tree.heading(heading_widget_details["id"], text=text_to_set)
