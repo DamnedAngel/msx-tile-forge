@@ -1,0 +1,68 @@
+name: Build all artifacts
+
+on:
+  workflow_call:
+
+jobs:
+  build-linux-x64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y devscripts build-essential \
+            dh-python python3-all debhelper-compat=13
+          pip3 install pyinstaller Pillow numpy scipy platformdirs tqdm
+      - name: Build all artifacts
+        run: make all
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: msxtileforge-linux-x64-bin
+          path: dist/*
+
+  build-mac-x86_64:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip3 install pyinstaller Pillow numpy scipy platformdirs tqdm
+      - name: Build all artifacts
+        run: make clean release
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: msxtileforge-mac-x86_64-bin
+          path: dist/*
+
+  build-windows-x64:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip3 install pyinstaller Pillow numpy scipy platformdirs tqdm
+      - name: Build all artifacts
+        run: make clean release
+      - name: Upload artifact (64bits)
+        uses: actions/upload-artifact@v4
+        with:
+          name: msxtileforge-windows-x64-bin
+          path: dist/*

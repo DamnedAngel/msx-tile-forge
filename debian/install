@@ -1,0 +1,4 @@
+msxtileforge.py usr/share/msxtileforge/
+msxtilemagic.py usr/share/msxtileforge/
+Resources/msxtileforge.desktop usr/share/applications/
+Resources/msxtileforge.png usr/share/icons/hicolor/128x128/apps/

@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "clean up",
+      "type": "shell",
+      "command": "make clean",
+      "windows": {
+        "command": "make clean"
+      },
+      "group": {
+        "kind": "none"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "build all",
+      "type": "shell",
+      "command": "make all",
+      "windows": {
+        "command": "make all"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "build debian",
+      "type": "shell",
+      "command": "make debian",
+      "windows": {
+        "command": "make debian"
+      },
+      "group": {
+        "kind": "build"
+      },
+      "problemMatcher": ["$gcc"]
+    },
+  ]
+}

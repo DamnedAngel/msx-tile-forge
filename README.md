@@ -143,13 +143,28 @@ To run MSX Tile Forge and use all its features, your system will need the follow
         pip install colour-science
         ```
 
+### Installing the Application
+
+Download or [clone](https://github.com/DamnedAngel/msx-tile-forge.git) the [msxtileforge.py](https://github.com/DamnedAngel/msx-tile-forge/blob/master/msxtileforge.py) script and its required companion script [msxtilemagic.py](https://github.com/DamnedAngel/msx-tile-forge/blob/master/msxtilemagic.py). **Both files must be in the same directory for the application to function correctly.**
+
+Also, you can download an install package from [GitHub releases](https://github.com/DamnedAngel/msx-tile-forge/releases) assets area.
+
+*   **Linux**
+    * Install via debian package (.deb) or download the correspondent binary asset (msxtileforge-*-linux-x64-bin.zip).
+ 
+*   **Windows**
+    * Download the correspondent binary asset (msxtileforge-*-windows-x64-bin.zip).
+
+*   **MacOS**
+    * Download the correspondent binary asset (msxtileforge-*-mac-x86_64-bin.zip).
+
 ### Running the Application
 
 1.  **Ensure Dependencies are Installed:**
     Verify that Python 3 and all the required Python libraries listed above are installed.
 
 2.  **Obtain the Scripts:**
-    Download or clone the `msxtileforge.py` script and its required companion script, `msxtilemagic.py`. **Both files must be in the same directory for the application to function correctly.**
+    Download or [clone](https://github.com/DamnedAngel/msx-tile-forge.git) the [msxtileforge.py](https://github.com/DamnedAngel/msx-tile-forge/blob/master/msxtileforge.py) script and its required companion script [msxtilemagic.py](https://github.com/DamnedAngel/msx-tile-forge/blob/master/msxtilemagic.py). **Both files must be in the same directory for the application to function correctly.**
 
 3.  **Navigate to the Scripts' Directory:**
     Open your command line interface (Terminal, Command Prompt, PowerShell, etc.) and navigate to the directory where you saved the `.py` files.

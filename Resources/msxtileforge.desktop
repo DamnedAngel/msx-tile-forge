@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=MSX Tile Forge
+Comment=Tool for creating and editing MSX tiles
+Exec=python3 /usr/share/msxtileforge/msxtileforge.py
+Icon=msxtileforge
+Terminal=false
+Type=Application
+Categories=Graphics;2DGraphics;RasterGraphics;
+StartupNotify=true

@@ -1,0 +1,14 @@
+Source: msx-tile-forge
+Section: graphics
+Priority: optional
+Maintainer: Damned Angel <DamnedAngel@DamnedAngel.com>
+Build-Depends: debhelper-compat (= 13), dh-python, python3, python3-setuptools
+Standards-Version: 4.6.2
+Homepage: https://github.com/DamnedAngel/msx-tile-forge
+
+Package: msx-tile-forge
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}, python3, python3-tk, python3-pil, python3-numpy, python3-scipy, python3-platformdirs, python3-tqdm
+Description: Tool for creating and editing MSX tiles
+  MSX Tile Forge is a tool for creating and editing graphics tiles
+  for MSX systems. Written in Python with a Tkinter interface.

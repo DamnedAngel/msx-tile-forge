@@ -1,0 +1,9 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: msx-tile-forge
+Upstream-Contact: Damned Angel <DamnedAngel@DamnedAngel.com>
+Source: https://github.com/DamnedAngel/msx-tile-forge
+
+Files: *
+Copyright: 2025 DamnedAngel
+License: AGPL-3.0-or-later
+ This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).

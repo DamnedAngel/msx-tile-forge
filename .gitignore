@@ -176,3 +176,8 @@ cython_debug/
 /b.py
 /c.py
 /diag.py
+
+# Deploy stuff
+dist/
+build/
+msxtileforge.spec
