@@ -1,5 +1,4 @@
-# Makefile for Flathub install of msx-tile-forge
-# To use only by io.github.DamnedAngel.msx-tile-forge.yaml
+# msx-tile-forge Makefile for Flathub
 
 # Defaults (can be overridden by environment/flatpak-builder)
 APP_VERSION ?= 0.0.0
@@ -21,10 +20,9 @@ METAINFO := $(FLATPAK_SRC)/io.github.DamnedAngel.msx-tile-forge.metainfo.xml
 WRAPPER := $(FLATPAK_SRC)/wrapper.sh
 
 # Default target
-all: nop
+all:
 
-nop:
-
+# Install, to use only by io.github.DamnedAngel.msx-tile-forge.yaml
 install:
 	@echo "==> Building $(FLATPAK_ID) version $(APP_VERSION)"
 	# Patch version in Python scripts
@@ -46,5 +44,36 @@ install:
 		$(FLATPAK_DEST)/share/metainfo/$(FLATPAK_ID).metainfo.xml
 	@echo "==> Build completed."
 
-.PHONY: all nop install
+# Smoke test
+smoketest:
+	@echo "==> Smoke test starting..."
+	# local install
+	@flatpak-builder --install --force-clean --user build-dir io.github.DamnedAngel.msx-tile-forge.yaml
+	# list installed applications
+	@flatpak list --app --user
+	# local run
+	@flatpak run io.github.DamnedAngel.msx-tile-forge
+	# uninstall
+	@flatpak uninstall -y io.github.DamnedAngel.msx-tile-forge
+	@echo "==> Smoke test completed."
+
+# Full test
+fulltest:
+	@echo "==> Full test with lint starting..."
+	# Clean old builds
+	@rm -rf build-dir
+	# Show flatpak runtime installed python version
+	@flatpak run --command=python3 org.freedesktop.Platform//24.08 --version
+	# Lint manifest
+	@flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest io.github.DamnedAngel.msx-tile-forge.yaml
+	# Build completely (install app files)
+	@flatpak-builder --force-clean build-dir io.github.DamnedAngel.msx-tile-forge.yaml
+	# Lint appdir content
+	@flatpak run --command=flatpak-builder-lint org.flatpak.Builder builddir build-dir || true | tee lint.log
+	@if grep -q "error" lint.log && ! grep -q "appstream-external-screenshot-url" lint.log; then exit 1; fi
+	# Test run
+	@flatpak-builder --run build-dir io.github.DamnedAngel.msx-tile-forge.yaml msxtileforge
+	@echo "==> Full test completed."
+
+.PHONY: all install smoketest fulltest
 

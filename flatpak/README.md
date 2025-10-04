@@ -34,16 +34,12 @@ If you're new about flathub, it's a good idea to read [submission](https://docs.
 
 1. Smoke test:  
    ```
-   cd flatpak
-   ./install.sh
-   ./test.sh
-   ./uninstall.sh
+   make -C flatpak smoketest
    ```
 
 2. Full test (with linting):  
    ```
-   cd flatpak
-   ./lint.sh
+   make -C flatpak fulltest
    ```
 
 ### How to publish a new release into Flathub
@@ -70,10 +66,7 @@ If you're new about flathub, it's a good idea to read [submission](https://docs.
 
 5. Do a smoke test on the [upstream project repo](https://github.com/DamnedAngel/msx-tile-forge):  
   ```
-  cd flatpak
-  ./install.sh
-  ./test.sh
-  ./uninstall.sh
+   make -C flatpak smoketest
   ```
 
 6. Copy `flatpak/io.github.DamnedAngel.msx-tile-forge.yaml` from [upstream project repo](https://github.com/DamnedAngel/msx-tile-forge) to the [flathub project repo](https://github.com/flathub/io.github.DamnedAngel.msx-tile-forge);
