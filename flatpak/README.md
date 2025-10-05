@@ -41,6 +41,7 @@ If you're new about flathub, it's a good idea to read [submission](https://docs.
    ```
    make -C flatpak fulltest
    ```
+   Note: `appstream-external-screenshot-url` is not a real error.
 
 ### How to publish a new release into Flathub
 

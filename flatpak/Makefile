@@ -71,6 +71,7 @@ fulltest:
 	# Lint appdir content
 	@flatpak run --command=flatpak-builder-lint org.flatpak.Builder builddir build-dir || true | tee lint.log
 	@if grep -q "error" lint.log && ! grep -q "appstream-external-screenshot-url" lint.log; then exit 1; fi
+	@rm lint.log
 	# Test run
 	@flatpak-builder --run build-dir io.github.DamnedAngel.msx-tile-forge.yaml msxtileforge
 	@echo "==> Full test completed."
