@@ -2,18 +2,27 @@
 
 Flatpak packaging for **MSX Tile Forge** targeting Linux systems
 
-## Upstream Project repo
-
-- Source: [https://github.com/DamnedAngel/msx-tile-forge](https://github.com/DamnedAngel/msx-tile-forge)
-
 ## User Guide
 
-### How to install and run on Linux from Flathub
+### What is Flatpak?
+
+Flatpak is a universal package format for Linux desktop applications. It is available on most Linux distributions. It allows you to install and run applications in a sandboxed environment, separate from the rest of the system. This sandboxing gives you more control over the dependencies of your applications.
+
+### What is Flathub?
+Flathub is a centralized repository of Flatpak apps. You can use it to install and update apps on your system.
+
+### How to install and run MSX Tile Forge on Linux from Flathub
 
 ```bash
 flatpak install flathub io.github.DamnedAngel.msx-tile-forge
 flatpak run io.github.DamnedAngel.msx-tile-forge
 ```
+
+### See also
+
+- [MSX Tile Forge Flathub home](https://flathub.org/en/apps/io.github.DamnedAngel.msx-tile-forge);
+- [MSX Tile Forge Flathub repo](https://github.com/flathub/io.github.DamnedAngel.msx-tile-forge);
+- [MSX Tile Forge Upstream repo](https://github.com/DamnedAngel/msx-tile-forge).
 
 ## Developer Guide
 
