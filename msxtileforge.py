@@ -3580,6 +3580,13 @@ class TileEditorApp:
             command=self.handle_export_raw
         )
 
+        import_export_menu.add_separator()
+
+        import_export_menu.add_command(
+            label="Export Map as Image...",
+            command=self.handle_export_map_image
+        )
+
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(label="About...", command=self.show_about_box)
@@ -16211,6 +16218,78 @@ class TileEditorApp:
                 return
 
         export_dialog = ExportDialog(self.root, self, self.current_project_base_path)
+
+    def handle_export_map_image(self):
+        # --- Start of New Method ---
+        if not map_data or not supertiles_data:
+            messagebox.showinfo("Export Map Image", "Map is empty or invalid.", parent=self.root)
+            return
+
+        save_path = filedialog.asksaveasfilename(
+            title="Export Map as Image",
+            defaultextension=".png",
+            filetypes=[
+                ("PNG Image", "*.png"),
+                ("BMP Image", "*.bmp"),
+                ("JPEG Image", "*.jpg"),
+                ("TIFF Image", "*.tif"),
+                ("All Files", "*.*")
+            ],
+            parent=self.root
+        )
+
+        if not save_path:
+            return
+
+        try:
+            self.root.config(cursor="watch")
+            self.root.update_idletasks()
+            
+            self._generate_and_save_map_image(save_path)
+            
+            messagebox.showinfo("Export Successful", f"Map image saved to:\n{os.path.basename(save_path)}", parent=self.root)
+        except Exception as e:
+            _error(f"Map Image Export Failed: {e}")
+            messagebox.showerror("Export Failed", f"An error occurred during image generation:\n{e}", parent=self.root)
+        finally:
+            self.root.config(cursor="")
+        # --- End of New Method ---
+
+    def _generate_and_save_map_image(self, filepath):
+        # --- Start of New Method ---
+        # Calculate native dimensions of one supertile in pixels
+        st_pixel_w = self.supertile_grid_width * TILE_WIDTH
+        st_pixel_h = self.supertile_grid_height * TILE_HEIGHT
+        
+        # Calculate total map image dimensions
+        total_w = map_width * st_pixel_w
+        total_h = map_height * st_pixel_h
+        
+        if total_w <= 0 or total_h <= 0:
+            raise ValueError("Invalid map dimensions.")
+
+        # Create the master canvas image (RGB mode)
+        # We use the map canvas background color as the base fill
+        bg_color = self.map_canvas.cget("bg")
+        full_map_image = Image.new('RGB', (total_w, total_h), color=bg_color)
+        
+        # Iterate through the map grid
+        for r in range(map_height):
+            for c in range(map_width):
+                st_index = map_data[r][c]
+                
+                # Leverage existing caching/rendering logic to get the PIL image for this supertile
+                # Pass exact native dimensions to avoid scaling artifacts
+                st_img_pil = self.create_map_render_of_supertile(st_index, st_pixel_w, st_pixel_h)
+                
+                if st_img_pil:
+                    paste_x = c * st_pixel_w
+                    paste_y = r * st_pixel_h
+                    full_map_image.paste(st_img_pil, (paste_x, paste_y))
+        
+        # Save the resulting image
+        # Pillow automatically determines format based on file extension
+        full_map_image.save(filepath)
 
     def _create_color_remap_table(self, source_palette_hex, dest_palette_hex):
         """
