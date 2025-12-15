@@ -119,6 +119,8 @@ You can download pre-compiled, ready-to-run versions of MSX Tile Forge for vario
         *   **Per-Selection Properties:** This is the key feature of the importer. When you select a tile or a range of tiles, the **current Fine Offset and FG/BG Colors are saved with that selection**. This allows you to select tiles from different parts of the ROM file (using different offsets) and assign them different colors, all within a single import operation. The final import will use the specific properties saved for each tile.
 
     *   **Export Raw Project (`Import/Export -> Export Raw Project...`):** Exports all project data into their raw binary formats. This feature runs an external script (`msxtileexport.py`) and provides options to automatically generate include files for assembly (`.s`) and C (`.h`), defining labels and arrays for the exported assets. This makes integrating the graphics into a development toolchain straightforward.
+    
+    *   **Export Map as Image (`Import/Export -> Export Map as Image...`):** Generates a full-resolution image file (PNG, BMP, JPG, TIFF) of the entire map. The export uses the project's native resolution (1:1 scale), rendering every Supertile pixel-perfectly using the current palette. This is ideal for creating level previews, documentation, or large background assets for modern engines.
 
 *   **Project Management & UX:**
     *   Projects bundle all asset types: palettes, tilesets, supertiles and maps.
@@ -216,6 +218,7 @@ The main menu bar provides access to project-wide operations and settings.
     *   `Import Tiles from Image...`: Opens the Image Importer to create a new tileset and palette from a standard image file.
     *   `Import Project from Image...`: Opens the advanced dialog to generate a complete new project from an image.
     *   `Export Raw Project...`: Opens a dialog to export all raw binary data (`.SC4Pal`, `.SC4Tiles`, etc.) to a specified folder. It includes options to generate assembly (`.s`) and C/C++ header (`.h`) files that define labels and arrays for the exported data, streamlining integration with game development projects.
+    *   `Export Map as Image...`: Opens a save dialog to export the current map as a full-size image. The file format is automatically determined by the extension you choose (e.g., saving as `map.png` creates a PNG file).    
 
 *   **Help Menu:**
     *   `About...`: Displays application information (version, author).
