@@ -3024,6 +3024,10 @@ class TileEditorApp:
         self.config_file_name = "settings.json"
         self.app_settings = {}
         
+        self.tile_selector_zoom = 1.0
+        self.st_selector_zoom = 1.0
+        self.selector_margin = 2
+
         self.active_msx_palette = []
         self.selected_palette_slot = 0
 
@@ -4900,6 +4904,12 @@ class TileEditorApp:
                     outline_color = "blue"
                     outline_width = 3
 
+                # Draw border 2 pixels outside the image to prevent overlap
+                bx1 = base_x - 2
+                by1 = base_y - 2
+                bx2 = base_x + size + 1
+                by2 = base_y + size + 1
+
                 bx1 = max(0, base_x - padding / 2)
                 by1 = max(0, base_y - padding / 2)
                 bx2 = base_x + size + padding / 2
@@ -4976,9 +4986,12 @@ class TileEditorApp:
                 return
             canvas.delete("all") # Clear previous items
             
-            item_pixel_w = self.supertile_grid_width * TILE_WIDTH
-            item_pixel_h = self.supertile_grid_height * TILE_HEIGHT
-            padding = 1 
+            zoom = self.st_selector_zoom
+            margin = self.selector_margin
+            item_pixel_w = int((self.supertile_grid_width * TILE_WIDTH) * zoom)
+            item_pixel_h = int((self.supertile_grid_height * TILE_HEIGHT) * zoom)
+            cell_w = item_pixel_w + (margin * 2)
+            cell_h = item_pixel_h + (margin * 2)
 
             if item_pixel_w <= 0 or item_pixel_h <= 0:
                 _debug(f" draw_supertile_selector: Invalid item_pixel_w/h ({item_pixel_w}x{item_pixel_h}). Aborting.")
@@ -4992,28 +5005,21 @@ class TileEditorApp:
                  canvas.after(100, lambda: self.draw_supertile_selector(canvas, highlighted_supertile_index))
                  return
             
-            _debug(f" draw_supertile_selector: Actual Canvas Width: {actual_canvas_width}, Item Pixel W: {item_pixel_w}")
-
-            # Calculate how many items can fit, ensuring at least one if possible.
-            if item_pixel_w + 2 * padding > actual_canvas_width : # Not even one fits with padding on both sides
-                items_across = 0 # Or 1 if you want to force one and let it clip/be tiny
-                if item_pixel_w <= actual_canvas_width : # Fits without padding
-                    items_across = 1
-                # else: it's wider than canvas, items_across remains 0 (or handle as error/special case)
+            if cell_w > actual_canvas_width:
+                items_across = 1 if item_pixel_w <= actual_canvas_width else 1
             else:
-                # Calculate max integer number of items that can fit
-                items_across = (actual_canvas_width - padding) // (item_pixel_w + padding)
+                items_across = actual_canvas_width // cell_w
             
-            items_across = max(1, items_across) # Ensure at least 1 item is planned if possible, even if it overflows slightly
-                                                # or if the canvas is very narrow. If item_pixel_w itself is > canvas_width,
-                                                # it will still draw 1 item that will be clipped by the canvas viewport.
+            items_across = max(1, items_across)
 
+            _debug(f" draw_supertile_selector: Actual Canvas Width: {actual_canvas_width}, Item Pixel W: {item_pixel_w}")
             _debug(f" draw_supertile_selector: Calculated items_across: {items_across}")
 
             num_logical_rows = math.ceil(len(supertiles_data) / items_across) if items_across > 0 else len(supertiles_data)
+
             # Scrollregion width should be based on the calculated items_across to fit them snugly
-            scroll_content_width = (items_across * item_pixel_w) + ((items_across + 1) * padding)
-            scroll_content_height = (num_logical_rows * item_pixel_h) + ((num_logical_rows + 1) * padding)
+            scroll_content_width = items_across * cell_w
+            scroll_content_height = num_logical_rows * cell_h
             scroll_content_width = max(1.0, float(scroll_content_width))
             scroll_content_height = max(1.0, float(scroll_content_height))
 
@@ -5033,9 +5039,11 @@ class TileEditorApp:
             # Optimized drawing for visible rows (same as before)
             view_y1 = canvas.canvasy(0)
             view_y2 = canvas.canvasy(canvas.winfo_height())
+
             # For a vertically scrolling list, start_draw_col is always 0, end_draw_col is items_across
-            start_draw_row = max(0, int(view_y1 // (item_pixel_h + padding)))
-            end_draw_row = min(num_logical_rows, int(math.ceil(view_y2 / (item_pixel_h + padding))))
+            start_draw_row = max(0, int(view_y1 // cell_h))
+            end_draw_row = min(num_logical_rows, int(math.ceil(view_y2 / cell_h)))
+            
             # Ensure at least one row is attempted if there's content, and end_draw_row covers partials
             if num_logical_rows > 0 and end_draw_row == start_draw_row and view_y2 > view_y1:
                  end_draw_row = max(end_draw_row, start_draw_row +1) # Ensure at least one iteration if content exists and view is valid
@@ -5049,8 +5057,8 @@ class TileEditorApp:
                     st_idx = r_grid * items_across + c_grid
                     if st_idx >= len(supertiles_data): break
 
-                    base_x = (c_grid * (item_pixel_w + padding)) + padding
-                    base_y = (r_grid * (item_pixel_h + padding)) + padding
+                    base_x = (c_grid * cell_w) + margin
+                    base_y = (r_grid * cell_h) + margin
 
                     img = self.create_supertile_image(st_idx, item_pixel_w, item_pixel_h) 
                     
@@ -5064,10 +5072,10 @@ class TileEditorApp:
                     elif st_idx == highlighted_supertile_index: outline_color = "red"; outline_width = 2
                     elif st_idx in self.marked_unused_supertiles: outline_color = "blue"; outline_width = 3
                     
-                    bx1 = base_x - (padding / 2 if padding > 0 else 0.5) 
-                    by1 = base_y - (padding / 2 if padding > 0 else 0.5)
-                    bx2 = base_x + item_pixel_w + (padding / 2 if padding > 0 else 0.5)
-                    by2 = base_y + item_pixel_h + (padding / 2 if padding > 0 else 0.5)
+                    bx1 = base_x - 2
+                    by1 = base_y - 2
+                    bx2 = base_x + item_pixel_w + 1
+                    by2 = base_y + item_pixel_h + 1
                     
                     if not canvas.winfo_exists(): return
                     canvas.create_rectangle(
@@ -8092,13 +8100,15 @@ class TileEditorApp:
             return
 
         # Define layout parameters
-        padding = 1
-        tile_size = VIEWER_TILE_SIZE
+        zoom = self.tile_selector_zoom
+        margin = self.selector_margin
+        size = int(VIEWER_TILE_SIZE * zoom)
+        cell_size = size + (margin * 2)
         items_per_row = NUM_TILES_ACROSS
 
         # Calculate target row and y-coordinate
         row, _ = divmod(tile_index, items_per_row)
-        target_y = row * (tile_size + padding)
+        target_y = row * cell_size
 
         # --- Scroll main viewer ---
         canvas_main = self.tileset_canvas
@@ -8173,12 +8183,15 @@ class TileEditorApp:
             _debug("   No relevant selector canvas is active/found to scroll.")
             return
 
-        item_pixel_h_content = self.supertile_grid_height * TILE_HEIGHT
-        item_pixel_w_content = self.supertile_grid_width * TILE_WIDTH
-        padding = 1
+        zoom = self.st_selector_zoom
+        margin = self.selector_margin
+        item_w = int((self.supertile_grid_width * TILE_WIDTH) * zoom)
+        item_h = int((self.supertile_grid_height * TILE_HEIGHT) * zoom)
+        cell_w = item_w + (margin * 2)
+        cell_h = item_h + (margin * 2)
 
-        if item_pixel_w_content <= 0 or item_pixel_h_content <= 0:
-            _debug(f"   Invalid item content pixel dimensions (W:{item_pixel_w_content}, H:{item_pixel_h_content}). Aborting.")
+        if item_w <= 0 or item_h <= 0:
+            _debug(f"   Invalid item content pixel dimensions (W:{item_w}, H:{item_h}). Aborting.")
             return
 
         for canvas_info in canvases_to_scroll:
@@ -8200,22 +8213,15 @@ class TileEditorApp:
                     _debug(f"     {canvas_name} - Canvas dimensions too small. Skipping scroll.")
                     continue
                 
-                items_across_for_this_canvas = 0
-                denominator_check = item_pixel_w_content + padding
-                if denominator_check <= 0:
-                    items_across_for_this_canvas = 1
-                elif item_pixel_w_content + (2 * padding) > actual_canvas_width:
-                    items_across_for_this_canvas = 0
-                    if item_pixel_w_content <= actual_canvas_width:
-                        items_across_for_this_canvas = 1
+                if cell_w > actual_canvas_width:
+                    items_across = 1
                 else:
-                    items_across_for_this_canvas = (actual_canvas_width - padding) // denominator_check
-                items_across_for_this_canvas = max(1, items_across_for_this_canvas)
-                _debug(f"     {canvas_name} - Calculated items_across: {items_across_for_this_canvas}")
+                    items_across = actual_canvas_width // cell_w
+                items_across = max(1, items_across)
 
-                target_row, _ = divmod(supertile_index, items_across_for_this_canvas)
-                target_item_y_top_content = target_row * (item_pixel_h_content + padding) + padding
-                target_item_y_bottom_content = target_item_y_top_content + item_pixel_h_content
+                target_row, _ = divmod(supertile_index, items_across)
+                target_item_y_top_content = target_row * cell_h
+                target_item_y_bottom_content = target_item_y_top_content + cell_h
                 _debug(f"     {canvas_name} - Target ST Index: {supertile_index}, Target Row: {target_row}")
                 _debug(f"     {canvas_name} - Target Item Y Content (top/bottom): {target_item_y_top_content} / {target_item_y_bottom_content}")
 
@@ -10392,58 +10398,40 @@ class TileEditorApp:
         return True
 
     def _get_index_from_canvas_coords(self, canvas, x_event, y_event, item_type_str):
-        padding = 1
-        items_across_calc = 0
-        item_render_w = 0
-        item_render_h = 0
-        max_items_count = 0
-
-        if not canvas.winfo_exists(): # Early exit if canvas is gone
-            _debug(f" _get_index_from_canvas_coords: Canvas {canvas} does not exist.")
+        if not canvas.winfo_exists():
             return -1 
 
+        margin = self.selector_margin
+        
         if item_type_str == "tile":
-            items_across_calc = NUM_TILES_ACROSS # Constant for tile viewers
-            item_render_w = VIEWER_TILE_SIZE
-            item_render_h = VIEWER_TILE_SIZE
-            max_items_count = len(tileset_patterns)
-        elif item_type_str == "supertile":
-            item_render_w = self.supertile_grid_width * TILE_WIDTH
-            item_render_h = self.supertile_grid_height * TILE_HEIGHT
-            max_items_count = len(supertiles_data)
-
-            if item_render_w <= 0 or item_render_h <= 0:
-                _debug(f" _get_index_from_canvas_coords: Invalid item_render_w/h for supertile ({item_render_w}x{item_render_h}).")
-                return -1
-
-            actual_canvas_w = canvas.winfo_width()
-            if actual_canvas_w <= 1: # Canvas not sized yet or too small
-                _debug(f" _get_index_from_canvas_coords: actual_canvas_w ({actual_canvas_w}) too small for supertile.")
-                return -1 
-
-            # This logic should now be identical to the one in draw_supertile_selector
-            if item_render_w + (2 * padding) > actual_canvas_w : # Not even one fits with padding on both sides
-                items_across_calc = 0 
-                if item_render_w <= actual_canvas_w : # Fits if no padding considered for this check
-                    items_across_calc = 1
-                # else: it's wider than canvas, items_across_calc remains 0 (or handle as error/special case)
+            zoom = self.tile_selector_zoom
+            base_w, base_h = VIEWER_TILE_SIZE, VIEWER_TILE_SIZE
+            # Check if this is a fluid grid (Importer) or fixed (Tabs)
+            if hasattr(canvas, 'grid_cols') or 'tile_' in str(canvas):
+                # If the canvas has a stored grid_cols (from Importer), use it
+                # Otherwise, calculate it based on current width
+                actual_w = canvas.winfo_width()
+                c_size = int(base_w * zoom) + (margin * 2)
+                items_across_calc = max(1, actual_w // c_size) if actual_w > 1 else NUM_TILES_ACROSS
             else:
-                # Calculate max integer number of items that can fit
-                if (item_render_w + padding) <= 0: # Avoid division by zero if item_render_w is huge negative (should not happen)
-                    items_across_calc = 0
-                else:
-                    items_across_calc = (actual_canvas_w - padding) // (item_render_w + padding)
+                items_across_calc = NUM_TILES_ACROSS
+            max_items_count = len(tileset_patterns)
             
-            items_across_calc = max(1, items_across_calc) # Ensure at least 1 item if possible
-            _debug(f" _get_index_from_canvas_coords (supertile): CanvasW={actual_canvas_w}, ItemW={item_render_w}, Calculated items_across_calc={items_across_calc}")
+        elif item_type_str == "supertile":
+            zoom = self.st_selector_zoom
+            base_w = self.supertile_grid_width * TILE_WIDTH
+            base_h = self.supertile_grid_height * TILE_HEIGHT
+            max_items_count = len(supertiles_data)
+            
+            actual_w = canvas.winfo_width()
+            c_size = int(base_w * zoom) + (margin * 2)
+            items_across_calc = max(1, actual_w // c_size) if actual_w > 1 else 1
 
-        else:
-            _error(f" _get_index_from_canvas_coords: Invalid item_type '{item_type_str}'")
-            return -1
-
-        if item_render_w <= 0 or item_render_h <= 0 or items_across_calc <= 0:
-            _error(f" _get_index_from_canvas_coords: Invalid calculated layout params for {item_type_str} (item_w={item_render_w}, item_h={item_render_h}, items_across={items_across_calc})")
-            return -1
+        # Standardized Cell Math
+        item_w = int(base_w * zoom)
+        item_h = int(base_h * zoom)
+        cell_w = item_w + (margin * 2)
+        cell_h = item_h + (margin * 2)
 
         try:
             canvas_content_x = canvas.canvasx(x_event)
@@ -10454,12 +10442,8 @@ class TileEditorApp:
 
         # Calculate total content dimensions based on dynamic layout
         num_logical_rows_calc = math.ceil(max_items_count / items_across_calc) if items_across_calc > 0 else 0
-        # Use actual_canvas_w for total_content_w if items_across_calc is based on it,
-        # or derive from items_across_calc if that's the definitive count.
-        # The scrollregion width in draw_supertile_selector is based on its items_across.
-        # So, use items_across_calc here for consistency with how scrollregion is set.
-        total_content_w = (items_across_calc * item_render_w) + ((items_across_calc + 1) * padding)
-        total_content_h = (num_logical_rows_calc * item_render_h) + ((num_logical_rows_calc + 1) * padding)
+        total_content_w = items_across_calc * cell_w
+        total_content_h = num_logical_rows_calc * cell_h
         
         # Check if click is within the logical content area defined by items_across_calc
         # This check becomes more important if items_across_calc differs from what might physically fit
@@ -10473,16 +10457,8 @@ class TileEditorApp:
             _debug(f" _get_index_from_canvas_coords: Click ({canvas_content_x},{canvas_content_y}) outside content area ({total_content_w}x{total_content_h}).")
             return -2 
 
-        col_calc = 0
-        if (item_render_w + padding) > 0 : # Avoid division by zero
-            col_calc = int(canvas_content_x // (item_render_w + padding))
-        
-        row_calc = 0
-        if (item_render_h + padding) > 0 : # Avoid division by zero
-            row_calc = int(canvas_content_y // (item_render_h + padding))
-        
-        col_calc = max(0, col_calc) 
-        row_calc = max(0, row_calc)
+        col_calc = int(canvas_content_x // cell_w)
+        row_calc = int(canvas_content_y // cell_h)
 
         index_calc = row_calc * items_across_calc + col_calc
 
@@ -10560,32 +10536,32 @@ class TileEditorApp:
             self.drag_indicator_id = None
 
         if target_idx_motion >= 0 and canvas_motion == target_canvas_for_indicator and not self.is_alt_pressed:
-            padding_ind = 1
-            item_w_ind, item_h_ind, items_across_ind, max_items_ind = 0,0,0,0
-
+            margin = self.selector_margin
             if self.drag_item_type == "tile":
-                item_w_ind = VIEWER_TILE_SIZE
-                item_h_ind = VIEWER_TILE_SIZE
+                zoom = self.tile_selector_zoom
+                item_w = int(VIEWER_TILE_SIZE * zoom)
+                item_h = int(VIEWER_TILE_SIZE * zoom)
                 items_across_ind = NUM_TILES_ACROSS
                 max_items_ind = len(tileset_patterns)
             elif self.drag_item_type == "supertile":
-                item_w_ind = self.supertile_grid_width * TILE_WIDTH
-                item_h_ind = self.supertile_grid_height * TILE_HEIGHT
+                zoom = self.st_selector_zoom
+                item_w = int((self.supertile_grid_width * TILE_WIDTH) * zoom)
+                item_h = int((self.supertile_grid_height * TILE_HEIGHT) * zoom)
                 max_items_ind = len(supertiles_data)
-                actual_canvas_w_ind = target_canvas_for_indicator.winfo_width()
-                if (item_w_ind + padding_ind) > 0:
-                    items_across_ind = max(1, (actual_canvas_w_ind - padding_ind) // (item_w_ind + padding_ind))
-                else:
-                    items_across_ind = 1
+                actual_canvas_w = target_canvas_for_indicator.winfo_width()
+                cell_w_check = item_w + (margin * 2)
+                items_across_ind = max(1, actual_canvas_w // cell_w_check)
 
-            if item_w_ind > 0 and item_h_ind > 0 and items_across_ind > 0:
+            cell_w = item_w + (margin * 2)
+            cell_h = item_h + (margin * 2)
+
+            if cell_w > 0 and cell_h > 0 and items_across_ind > 0:
                 indicator_pos_idx = min(target_idx_motion, max_items_ind) 
-                
                 row_ind, col_ind = divmod(indicator_pos_idx, items_across_ind)
                 
-                line_x_pos = (col_ind * (item_w_ind + padding_ind)) + (padding_ind / 2) 
-                line_y1_pos = (row_ind * (item_h_ind + padding_ind)) + (padding_ind / 2)
-                line_y2_pos = line_y1_pos + item_h_ind 
+                line_x_pos = col_ind * cell_w
+                line_y1_pos = row_ind * cell_h
+                line_y2_pos = line_y1_pos + cell_h 
 
                 self.drag_indicator_id = target_canvas_for_indicator.create_line(
                     line_x_pos, line_y1_pos, line_x_pos, line_y2_pos,
@@ -16964,11 +16940,14 @@ class TileEditorApp:
         if not dialog.winfo_exists(): return
         
         # --- 1. Calculate the clicked tile index ---
-        size = VIEWER_TILE_SIZE
-        padding = 1
+        zoom = self.tile_selector_zoom
+        margin = self.selector_margin
+        size = int(VIEWER_TILE_SIZE * zoom)
+        cell_size = size + (margin * 2)
+
         cx, cy = dialog.canvas.canvasx(event.x), dialog.canvas.canvasy(event.y)
-        col = int(cx // (size + padding))
-        row = int(cy // (size + padding))
+        col = int(cx // cell_size)
+        row = int(cy // cell_size)
         idx = row * dialog.grid_cols + col
 
         if not (0 <= idx < len(dialog.temp_tileset_patterns)): return
