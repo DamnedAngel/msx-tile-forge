@@ -3956,8 +3956,25 @@ class TileEditorApp:
             
             self.attr_row_frames.append(row_control_frame)
 
+        selected_color_info_frame_tile_tab = ttk.LabelFrame(left_frame, text="Selected Color Info")
+        selected_color_info_frame_tile_tab.grid(row=1, column=0, pady=(5, 5), sticky="ew")
+
+        self.selected_color_preview_canvas_tile_tab = tk.Canvas(selected_color_info_frame_tile_tab, width=48, height=48, bg="darkgrey", highlightthickness=0)
+        self.selected_color_preview_canvas_tile_tab.grid(row=0, column=0, rowspan=2, padx=5, pady=5)
+        self.selected_color_preview_canvas_tile_tab.bind("<Double-Button-1>", self._on_canvas_double_click)
+
+        self.selected_color_info_label_tile_tab = ttk.Label(selected_color_info_frame_tile_tab, text="Color: 0")
+        self.selected_color_info_label_tile_tab.grid(row=0, column=1, padx=5, sticky="sw")
+
+        self.selected_color_usage_label_tile_tab = tk.Label(selected_color_info_frame_tile_tab, text="Usage: N/A", anchor="w", justify=tk.LEFT)
+        self.selected_color_usage_label_tile_tab.grid(row=1, column=1, padx=5, sticky="nw")
+        self.selected_color_usage_label_tile_tab.bind("<Button-1>", self._handle_usage_label_click_tile_tab)
+
+        selected_color_info_frame_tile_tab.grid_rowconfigure(0, weight=1)
+        selected_color_info_frame_tile_tab.grid_rowconfigure(1, weight=1)
+
         selected_tile_info_frame = ttk.LabelFrame(left_frame, text="Selected Tile Info")
-        selected_tile_info_frame.grid(row=1, column=0, pady=(10, 5), sticky="ew")
+        selected_tile_info_frame.grid(row=2, column=0, pady=(10, 5), sticky="ew")
         
         self.selected_tile_preview_image_ref = None
 
@@ -3978,23 +3995,6 @@ class TileEditorApp:
         self.selected_tile_usage_label.grid(row=1, column=1, padx=5, sticky="nw")
         self.selected_tile_usage_label.bind("<Button-1>", self._handle_tile_usage_label_click)
         
-        selected_color_info_frame_tile_tab = ttk.LabelFrame(left_frame, text="Selected Color Info")
-        selected_color_info_frame_tile_tab.grid(row=2, column=0, pady=(5, 5), sticky="ew")
-
-        self.selected_color_preview_canvas_tile_tab = tk.Canvas(selected_color_info_frame_tile_tab, width=48, height=48, bg="darkgrey", highlightthickness=0)
-        self.selected_color_preview_canvas_tile_tab.grid(row=0, column=0, rowspan=2, padx=5, pady=5)
-        self.selected_color_preview_canvas_tile_tab.bind("<Double-Button-1>", self._on_canvas_double_click)
-
-        self.selected_color_info_label_tile_tab = ttk.Label(selected_color_info_frame_tile_tab, text="Color: 0")
-        self.selected_color_info_label_tile_tab.grid(row=0, column=1, padx=5, sticky="sw")
-
-        self.selected_color_usage_label_tile_tab = tk.Label(selected_color_info_frame_tile_tab, text="Usage: N/A", anchor="w", justify=tk.LEFT)
-        self.selected_color_usage_label_tile_tab.grid(row=1, column=1, padx=5, sticky="nw")
-        self.selected_color_usage_label_tile_tab.bind("<Button-1>", self._handle_usage_label_click_tile_tab)
-
-        selected_color_info_frame_tile_tab.grid_rowconfigure(0, weight=1)
-        selected_color_info_frame_tile_tab.grid_rowconfigure(1, weight=1)
-
         selected_tile_info_frame.grid_rowconfigure(0, weight=1)
         selected_tile_info_frame.grid_rowconfigure(1, weight=1)
 
