@@ -3978,11 +3978,28 @@ class TileEditorApp:
         self.selected_tile_usage_label.grid(row=1, column=1, padx=5, sticky="nw")
         self.selected_tile_usage_label.bind("<Button-1>", self._handle_tile_usage_label_click)
         
+        selected_color_info_frame_tile_tab = ttk.LabelFrame(left_frame, text="Selected Color Info")
+        selected_color_info_frame_tile_tab.grid(row=2, column=0, pady=(5, 5), sticky="ew")
+
+        self.selected_color_preview_canvas_tile_tab = tk.Canvas(selected_color_info_frame_tile_tab, width=48, height=48, bg="darkgrey", highlightthickness=0)
+        self.selected_color_preview_canvas_tile_tab.grid(row=0, column=0, rowspan=2, padx=5, pady=5)
+        self.selected_color_preview_canvas_tile_tab.bind("<Double-Button-1>", self._on_canvas_double_click)
+
+        self.selected_color_info_label_tile_tab = ttk.Label(selected_color_info_frame_tile_tab, text="Color: 0")
+        self.selected_color_info_label_tile_tab.grid(row=0, column=1, padx=5, sticky="sw")
+
+        self.selected_color_usage_label_tile_tab = tk.Label(selected_color_info_frame_tile_tab, text="Usage: N/A", anchor="w", justify=tk.LEFT)
+        self.selected_color_usage_label_tile_tab.grid(row=1, column=1, padx=5, sticky="nw")
+        self.selected_color_usage_label_tile_tab.bind("<Button-1>", self._handle_usage_label_click_tile_tab)
+
+        selected_color_info_frame_tile_tab.grid_rowconfigure(0, weight=1)
+        selected_color_info_frame_tile_tab.grid_rowconfigure(1, weight=1)
+
         selected_tile_info_frame.grid_rowconfigure(0, weight=1)
         selected_tile_info_frame.grid_rowconfigure(1, weight=1)
 
         transform_frame = ttk.LabelFrame(left_frame, text="Transform")
-        transform_frame.grid(row=2, column=0, pady=(0, 5), sticky="ew") 
+        transform_frame.grid(row=3, column=0, pady=(5, 5), sticky="ew") 
         
         flip_h_button = ttk.Button(
             transform_frame, text="Flip H", command=self.flip_tile_horizontal
@@ -4013,10 +4030,8 @@ class TileEditorApp:
         )
         shift_right_button.grid(row=1, column=3, padx=3, pady=3)
         
-        self.mark_unused_tiles_button = ttk.Button(
-            left_frame, text="Mark Unused", command=self.handle_mark_unused_tiles
-        )
-        self.mark_unused_tiles_button.grid(row=3, column=0, pady=(5, 10), sticky="ew") 
+        self.mark_unused_tiles_button = ttk.Button(left_frame, text="Mark Unused", command=self.handle_mark_unused_tiles)
+        self.mark_unused_tiles_button.grid(row=4, column=0, pady=(5, 10), sticky="ew") 
 
         # Right Frame (Palette, Tileset Viewer, Buttons)
         right_frame = ttk.Frame(main_frame)
@@ -4164,6 +4179,7 @@ class TileEditorApp:
             highlightthickness=0
         )
         self.st_tab_selected_tile_preview_canvas.grid(row=0, column=0, rowspan=3, padx=5, pady=5, sticky="n")
+        self.st_tab_selected_tile_preview_canvas.bind("<Double-Button-1>", self._on_canvas_double_click)
 
         self.st_tab_selected_tile_info_label = ttk.Label(st_tab_tile_info_frame, text="Tile: 0")
         self.st_tab_selected_tile_info_label.grid(row=0, column=1, padx=5, sticky="nw")
@@ -4193,6 +4209,7 @@ class TileEditorApp:
             highlightthickness=0
         )
         self.selected_supertile_preview_canvas.grid(row=0, column=0, rowspan=3, padx=5, pady=5)
+        self.selected_supertile_preview_canvas.bind("<Double-Button-1>", self._on_canvas_double_click)
 
         self.selected_supertile_info_label = ttk.Label(selected_st_info_frame, text="Supertile: 0")
         self.selected_supertile_info_label.grid(row=0, column=1, padx=5, sticky="nw")
@@ -4660,6 +4677,7 @@ class TileEditorApp:
                 self.update_tile_info_label()
                 recalc_usage = changed_level != 'tile_edit'
                 self._update_selected_tile_info_panel(update_usage_counts=recalc_usage)
+                self._update_selected_color_info_panel_tile_tab()
 
         elif current_tab_index == 2:
             if changed_level in ["all", "supertile", "tile_select", "tile_edit"] or palette_changed:
@@ -5644,6 +5662,8 @@ class TileEditorApp:
                 if selected_color_index != index_to_select:
                     selected_color_index = index_to_select
                     self.draw_palette()
+                    # Refresh the color info panel to reflect the new selection
+                    self._update_selected_color_info_panel_tile_tab()
 
         # Schedule the selection to happen after a delay
         if 0 <= clicked_index < 16:
@@ -6521,6 +6541,9 @@ class TileEditorApp:
         self.is_shift_pressed = False
         self.is_ctrl_pressed = False
 
+        # Configure the Map Info Panel for the new dimensions
+        self._setup_map_selected_st_info_panel()
+
     def save_palette(self, filepath=None, is_standalone_operation=True):
         save_path = filepath
         if not save_path:
@@ -7182,6 +7205,7 @@ class TileEditorApp:
                     self.supertile_image_cache.clear()
                     self.map_render_cache.clear()
                     self.invalidate_minimap_background_cache()
+                    self._setup_map_selected_st_info_panel()
                     self.update_all_displays(changed_level="all")
                     self._update_editor_button_states()
                     self._update_edit_menu_state()
@@ -14518,6 +14542,29 @@ class TileEditorApp:
 
         return ImageTk.PhotoImage(pil_supertile_scaled)
 
+    def _setup_map_selected_st_info_panel(self):
+        """
+        Configures the layout and dimensions of the Map Editor's Info Panel.
+        Should only be called when supertile grid dimensions change (New/Open Project).
+        """
+        if not hasattr(self, 'map_selected_st_preview_canvas') or \
+           not self.map_selected_st_preview_canvas.winfo_exists():
+            return
+
+        # Calculate the aspect ratio of a supertile in this project
+        st_width_msx = self.supertile_grid_width * TILE_WIDTH
+        st_height_msx = self.supertile_grid_height * TILE_HEIGHT
+
+        if st_height_msx > 0:
+            # We want height to be exactly 64 pixels
+            preview_h = 64
+            scale = preview_h / st_height_msx
+            target_w = int(st_width_msx * scale)
+            
+            # Apply the calculated width to the canvas once
+            self.map_selected_st_preview_canvas.config(width=target_w, height=preview_h)
+            _debug(f"[_setup_map_selected_st_info_panel] Map preview resized to {target_w}x{preview_h}")
+
     def _update_selected_supertile_info_panel(self):
         if not hasattr(self, 'selected_supertile_preview_canvas') or \
            not self.selected_supertile_preview_canvas.winfo_exists():
@@ -14562,29 +14609,27 @@ class TileEditorApp:
         if hasattr(self, 'map_selected_st_preview_canvas') and self.map_selected_st_preview_canvas.winfo_exists():
             self.map_selected_st_info_label.config(text=f"Supertile: {selected_supertile_for_map}")
 
-            # Scale to exactly 64px height; width is calculated automatically by fit_mode="height"
+            # We use the fixed height of 64px; the canvas width was already set by the setup method
             preview_h = 64
             img_map = self.create_supertile_preview_image(selected_supertile_for_map, 1, preview_h, fit_mode="height")
             self.map_selected_st_preview_image_ref = img_map
             
-            # Resize the canvas to fit the new dynamic image width
-            actual_w = img_map.width()
-            self.map_selected_st_preview_canvas.config(width=actual_w)
-            
+            # No .config() call here anymore; we just draw the image
             self.map_selected_st_preview_canvas.delete("all")
-            # Draw at 0,0 since the canvas matches the image size
             self.map_selected_st_preview_canvas.create_image(0, 0, image=img_map, anchor=tk.NW)
 
+            # Update the persisted count and labels
             map_usage_count, unique_tile_count = self._get_info_for_single_supertile(selected_supertile_for_map)
             self.map_selected_st_usage_count = map_usage_count
+
             self.map_selected_st_composition_label.config(text=f"Contains {unique_tile_count} unique tiles.")
             self.map_selected_st_usage_label.config(text=f"Used {map_usage_count} times on map.")
             
             if map_usage_count > 0:
                 self.map_selected_st_usage_label.config(fg="blue", font=self.link_font, cursor="hand2")
             else:
-                default_fg_map = self.map_selected_st_info_label.cget("foreground") or "#000000"
-                self.map_selected_st_usage_label.config(fg=default_fg_map, font=self.normal_font, cursor="")
+                default_fg = self.map_selected_st_info_label.cget("foreground") or "#000000"
+                self.map_selected_st_usage_label.config(fg=default_fg, font=self.normal_font, cursor="")
 
     def _update_st_tab_selected_tile_info_panel(self):
         if not hasattr(self, 'st_tab_selected_tile_preview_canvas') or \
@@ -15126,6 +15171,9 @@ class TileEditorApp:
         self.clear_all_caches()
         self.invalidate_minimap_background_cache()
         self._reconfigure_supertile_definition_canvas()
+
+        # Recalculate Map Info Panel layout for the newly loaded project
+        self._setup_map_selected_st_info_panel()
 
         self._perform_project_load_ui_updates()
         _debug(" Project data loaded/created. Now restoring usage windows...")
@@ -16157,7 +16205,7 @@ class TileEditorApp:
         
         # --- FROM MAP EDITOR CANVAS ---
         if source_widget == self.map_canvas:
-            _debug("[DEEP DIVE] Request from Map to Supertile Editor.")
+            _debug("[DEEP DIVE] Request from Map Canvas to Supertile Editor.")
             canvas_x = self.map_canvas.canvasx(event.x)
             canvas_y = self.map_canvas.canvasy(event.y)
             coords = self._get_supertile_coords_from_canvas(canvas_x, canvas_y)
@@ -16173,7 +16221,7 @@ class TileEditorApp:
 
         # --- FROM SUPERTILE DEFINITION CANVAS ---
         elif source_widget == self.supertile_def_canvas:
-            _debug("[DEEP DIVE] Request from Supertile to Tile Editor.")
+            _debug("[DEEP DIVE] Request from Supertile Definition to Tile Editor.")
             mini_tile_dsize = SUPERTILE_DEF_TILE_SIZE
             col = event.x // mini_tile_dsize
             row = event.y // mini_tile_dsize
@@ -16195,13 +16243,12 @@ class TileEditorApp:
             row = event.y // (size + padding)
             clicked_index = row * 4 + col
             if 0 <= clicked_index < 16:
-                _debug(f"[DEEP DIVE] Diving to edit pallete.")
+                _debug(f"[DEEP DIVE] Diving to edit palette index {clicked_index}.")
                 self.selected_palette_slot = clicked_index
                 selected_color_index = clicked_index
                 self.notebook.select(self.tab_palette_editor)
                 self.update_all_displays(changed_level="all")
                 self.current_palette_canvas.focus_set()
-
 
         # --- FROM SUPERTILE EDITOR'S TILESET ---
         elif source_widget == self.st_tileset_canvas:
@@ -16218,7 +16265,7 @@ class TileEditorApp:
 
         # --- FROM MAP EDITOR'S SUPERTILE PALETTE ---
         elif source_widget == self.map_supertile_selector_canvas:
-            _debug("[DEEP DIVE] Request from Map Editor Palette to Supertile Editor.")
+            _debug("[DEEP DIVE] Request from Map Editor ST Palette to Supertile Editor.")
             supertile_idx_to_edit = self._get_index_from_canvas_coords(source_widget, event.x, event.y, "supertile")
             if 0 <= supertile_idx_to_edit < len(supertiles_data):
                 current_supertile_index = supertile_idx_to_edit
@@ -16228,15 +16275,45 @@ class TileEditorApp:
                 self.scroll_selectors_to_supertile(current_supertile_index)
                 self.supertile_def_canvas.focus_set()
 
-        # --- FROM MAP EDITOR'S SELECTED INFO PANEL ---
+        # --- FROM MAP EDITOR'S SELECTED INFO PANEL (ST IMAGE) ---
         elif hasattr(self, 'map_selected_st_preview_canvas') and source_widget == self.map_selected_st_preview_canvas:
-            _debug("[DEEP DIVE] Request from Map Info Panel to Supertile Editor.")
+            _debug(f"[DEEP DIVE] Request from Map ST Info Panel to Supertile Editor.")
             current_supertile_index = selected_supertile_for_map
-            _debug(f"[DEEP DIVE] Diving to edit Supertile {selected_supertile_for_map}.")
+            _debug(f"[DEEP DIVE] Diving to edit Supertile {current_supertile_index}.")
             self.notebook.select(self.tab_supertile_editor)
             self.update_all_displays(changed_level="all")
             self.scroll_selectors_to_supertile(current_supertile_index)
             self.supertile_def_canvas.focus_set()
+
+        # --- FROM TILE EDITOR'S SELECTED INFO PANEL (TILE IMAGE) ---
+        elif hasattr(self, 'selected_tile_preview_canvas') and source_widget == self.selected_tile_preview_canvas:
+            _debug("[DEEP DIVE] Request from Tile Info Panel to Palette Editor.")
+            fg_idx, _ = tileset_colors[current_tile_index][0]
+            _debug(f"[DEEP DIVE] Diving to edit palette (using Tile {current_tile_index} row 0 FG: {fg_idx}).")
+            self.selected_palette_slot = fg_idx
+            selected_color_index = fg_idx
+            self.notebook.select(self.tab_palette_editor)
+            self.update_all_displays(changed_level="all")
+            self.current_palette_canvas.focus_set()
+
+        # --- FROM TILE EDITOR'S SELECTED COLOR INFO PANEL (COLOR SWATCH) ---
+        elif hasattr(self, 'selected_color_preview_canvas_tile_tab') and source_widget == self.selected_color_preview_canvas_tile_tab:
+            _debug(f"[DEEP DIVE] Request from Tile Tab Color Info Panel to Palette Editor.")
+            # Destination: Palette Tab, selecting the specific color slot currently shown in the swatch
+            self.selected_palette_slot = selected_color_index
+            self.notebook.select(self.tab_palette_editor)
+            self.update_all_displays(changed_level="all")
+            self.current_palette_canvas.focus_set()
+
+        # --- FROM SUPERTILE EDITOR'S SELECTED TILE INFO PANEL (TILE IMAGE) ---
+        elif hasattr(self, 'st_tab_selected_tile_preview_canvas') and source_widget == self.st_tab_selected_tile_preview_canvas:
+            _debug("[DEEP DIVE] Request from ST-Tab Tile Info Panel to Tile Editor.")
+            current_tile_index = selected_tile_for_supertile
+            _debug(f"[DEEP DIVE] Diving to edit Tile {current_tile_index}.")
+            self.notebook.select(self.tab_tile_editor)
+            self.update_all_displays(changed_level="all")
+            self.scroll_viewers_to_tile(current_tile_index)
+            self.editor_canvas.focus_set()
 
     def _place_tile_in_supertile_and_set_drag_state(self, r, c):
         """Helper to call from 'after' to place a tile and set drag state."""
@@ -17417,6 +17494,40 @@ class TileEditorApp:
             # The script is located alongside the main application script.
             base_path = os.path.dirname(os.path.abspath(__file__))
         return os.path.join(base_path, script_name)
+
+    def _update_selected_color_info_panel_tile_tab(self):
+        """Updates the Selected Color Info panel in the Tile Editor tab."""
+        if not hasattr(self, 'selected_color_preview_canvas_tile_tab') or \
+           not self.selected_color_preview_canvas_tile_tab.winfo_exists():
+            return
+
+        idx = selected_color_index
+        color_hex = self.active_msx_palette[idx]
+        
+        # Update labels
+        self.selected_color_info_label_tile_tab.config(text=f"Color: {idx} ({color_hex})")
+        
+        # Update canvas preview
+        canvas = self.selected_color_preview_canvas_tile_tab
+        canvas.delete("all")
+        w = canvas.winfo_width() if canvas.winfo_width() > 1 else 48
+        h = canvas.winfo_height() if canvas.winfo_height() > 1 else 48
+        canvas.create_rectangle(0, 0, w, h, fill=color_hex, outline="grey")
+
+        # Calculate usage
+        _, _, tile_refs_count = self._calculate_single_color_usage(idx)
+        self.selected_color_usage_label_tile_tab.config(text=f"Used in {tile_refs_count} tiles.")
+        
+        # Styling based on usage
+        if tile_refs_count > 0:
+            self.selected_color_usage_label_tile_tab.config(fg="blue", font=self.link_font, cursor="hand2")
+        else:
+            default_fg = self.selected_color_info_label_tile_tab.cget("foreground") or "#000000"
+            self.selected_color_usage_label_tile_tab.config(fg=default_fg, font=self.normal_font, cursor="")
+
+    def _handle_usage_label_click_tile_tab(self, event=None):
+        """Action when the color usage label in the Tile tab is clicked."""
+        self.show_tiles_using_color(selected_color_index)
 
 # print(dir(TileEditorApp))
 # exit() # Stop before GUI starts for this test
