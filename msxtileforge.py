@@ -4192,7 +4192,7 @@ class TileEditorApp:
             bg="darkgrey",
             highlightthickness=0
         )
-        self.selected_supertile_preview_canvas.grid(row=0, column=0, rowspan=3, padx=5, pady=5, sticky="n")
+        self.selected_supertile_preview_canvas.grid(row=0, column=0, rowspan=3, padx=5, pady=5)
 
         self.selected_supertile_info_label = ttk.Label(selected_st_info_frame, text="Supertile: 0")
         self.selected_supertile_info_label.grid(row=0, column=1, padx=5, sticky="nw")
@@ -6029,6 +6029,14 @@ class TileEditorApp:
                 self.draw_map_canvas() 
                 self.draw_minimap()    
                 self._request_supertile_usage_refresh()
+
+                # Increment the persisted count and update the label immediately
+                if hasattr(self, 'map_selected_st_usage_count'):
+                    self.map_selected_st_usage_count += 1
+                    if hasattr(self, 'map_selected_st_usage_label'):
+                        self.map_selected_st_usage_label.config(text=f"Used {self.map_selected_st_usage_count} times on map.")
+                        # Since the count is now > 0, ensure the label has the link styling
+                        self.map_selected_st_usage_label.config(fg="blue", font=self.link_font, cursor="hand2")
 
             last_painted_map_cell = current_cell_id
 
@@ -9719,6 +9727,8 @@ class TileEditorApp:
                         self.update_map_info_labels()
                         # Scroll the selector to the selected supertile
                         self.scroll_selectors_to_supertile(selected_supertile_for_map)
+                        # Update the Info Panel to show the newly picked supertile
+                        self._update_selected_supertile_info_panel()
                 else:
                     print(
                         f"Right-click: Supertile index {clicked_supertile_index} at map [{map_row},{map_col}] is out of bounds (max {len(supertiles_data)-1})."
@@ -14472,19 +14482,12 @@ class TileEditorApp:
 
         return map_usage_count, unique_tile_count
 
-    def create_supertile_preview_image(self, supertile_index, box_width, box_height):
-        final_photo = tk.PhotoImage(width=box_width, height=box_height)
-        try:
-            bg_color = self.root.cget("bg")
-            final_photo.put(bg_color, to=(0, 0, box_width, box_height))
-        except (tk.TclError, AttributeError):
-            final_photo.put("#F0F0F0", to=(0, 0, box_width, box_height))
-
+    def create_supertile_preview_image(self, supertile_index, box_width, box_height, fit_mode="best"):
         st_width_msx = self.supertile_grid_width * TILE_WIDTH
         st_height_msx = self.supertile_grid_height * TILE_HEIGHT
 
         if st_width_msx <= 0 or st_height_msx <= 0:
-             return final_photo
+             return tk.PhotoImage(width=1, height=1)
 
         pil_supertile_native = self.create_map_render_of_supertile(
             supertile_index,
@@ -14493,49 +14496,48 @@ class TileEditorApp:
         )
 
         if not pil_supertile_native:
-            return final_photo
+            return tk.PhotoImage(width=1, height=1)
 
+        # Calculate scales for both axes
         scale_x = box_width / st_width_msx
         scale_y = box_height / st_height_msx
-        scale = min(scale_x, scale_y)
 
-        scaled_width = int(st_width_msx * scale)
-        scaled_height = int(st_height_msx * scale)
+        # Calculate scale based on the requested fit mode
+        if fit_mode == "height":
+            scale = scale_y
+        else:
+            scale = min(scale_x, scale_y)
 
-        if scaled_width < 1 or scaled_height < 1:
-            return final_photo
+        scaled_width = max(1, int(st_width_msx * scale))
+        scaled_height = max(1, int(st_height_msx * scale))
 
         pil_supertile_scaled = pil_supertile_native.resize(
             (scaled_width, scaled_height),
             Image.Resampling.NEAREST
         )
 
-        temp_photo = ImageTk.PhotoImage(pil_supertile_scaled)
-
-        paste_x = (box_width - scaled_width) // 2
-        paste_y = (box_height - scaled_height) // 2
-
-        final_photo.tk.call(final_photo, 'copy', temp_photo, '-from', 0, 0, scaled_width, scaled_height, '-to', paste_x, paste_y)
-
-        return final_photo
+        return ImageTk.PhotoImage(pil_supertile_scaled)
 
     def _update_selected_supertile_info_panel(self):
         if not hasattr(self, 'selected_supertile_preview_canvas') or \
            not self.selected_supertile_preview_canvas.winfo_exists():
             return
 
+        # Update Supertile Editor Tab Panel (Dynamic sizing within 64x64) ---
         self.selected_supertile_info_label.config(text=f"Supertile: {current_supertile_index}")
 
-        preview_size = 64
-        img = self.create_supertile_preview_image(current_supertile_index, preview_size, preview_size)
+        # Keep Best Fit logic to stay within 64x64 bounds
+        preview_max = 64
+        img = self.create_supertile_preview_image(current_supertile_index, preview_max, preview_max, fit_mode="best")
         self.selected_supertile_preview_image_ref = img
+        
+        # Resize canvas to match the image precisely (removes gutters)
+        self.selected_supertile_preview_canvas.config(width=img.width(), height=img.height())
         self.selected_supertile_preview_canvas.delete("all")
         self.selected_supertile_preview_canvas.create_image(0, 0, image=img, anchor=tk.NW)
 
         map_usage_count, unique_tile_count = self._get_info_for_single_supertile(current_supertile_index)
-
         self.selected_supertile_composition_label.config(text=f"Contains {unique_tile_count} unique tiles.")
-        
         self.selected_supertile_usage_label.config(text=f"Used {map_usage_count} times on map.")
         
         # Conditionally style the label based on usage count
@@ -14560,24 +14562,29 @@ class TileEditorApp:
         if hasattr(self, 'map_selected_st_preview_canvas') and self.map_selected_st_preview_canvas.winfo_exists():
             self.map_selected_st_info_label.config(text=f"Supertile: {selected_supertile_for_map}")
 
-            preview_size = 64
-            img_map = self.create_supertile_preview_image(selected_supertile_for_map, preview_size, preview_size)
+            # Scale to exactly 64px height; width is calculated automatically by fit_mode="height"
+            preview_h = 64
+            img_map = self.create_supertile_preview_image(selected_supertile_for_map, 1, preview_h, fit_mode="height")
             self.map_selected_st_preview_image_ref = img_map
+            
+            # Resize the canvas to fit the new dynamic image width
+            actual_w = img_map.width()
+            self.map_selected_st_preview_canvas.config(width=actual_w)
+            
             self.map_selected_st_preview_canvas.delete("all")
+            # Draw at 0,0 since the canvas matches the image size
             self.map_selected_st_preview_canvas.create_image(0, 0, image=img_map, anchor=tk.NW)
 
             map_usage_count, unique_tile_count = self._get_info_for_single_supertile(selected_supertile_for_map)
-
+            self.map_selected_st_usage_count = map_usage_count
             self.map_selected_st_composition_label.config(text=f"Contains {unique_tile_count} unique tiles.")
             self.map_selected_st_usage_label.config(text=f"Used {map_usage_count} times on map.")
             
             if map_usage_count > 0:
                 self.map_selected_st_usage_label.config(fg="blue", font=self.link_font, cursor="hand2")
             else:
-                default_fg = self.map_selected_st_info_label.cget("foreground")
-                if not default_fg:
-                    default_fg = "#000000"
-                self.map_selected_st_usage_label.config(fg=default_fg, font=self.normal_font, cursor="")
+                default_fg_map = self.map_selected_st_info_label.cget("foreground") or "#000000"
+                self.map_selected_st_usage_label.config(fg=default_fg_map, font=self.normal_font, cursor="")
 
     def _update_st_tab_selected_tile_info_panel(self):
         if not hasattr(self, 'st_tab_selected_tile_preview_canvas') or \
