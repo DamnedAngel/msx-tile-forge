@@ -4389,10 +4389,11 @@ class TileEditorApp:
         self.map_editor_palette_pane_container = palette_area_frame
 
         map_area_frame.grid_columnconfigure(0, weight=1)
+        map_area_frame.grid_columnconfigure(1, weight=0)
         map_area_frame.grid_rowconfigure(3, weight=1) 
         
         controls_frame = ttk.Frame(map_area_frame)
-        controls_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
+        controls_frame.grid(row=0, column=0, sticky=tk.W, pady=(0, 5))
         size_label = ttk.Label(controls_frame, text="Map Size:")
         size_label.grid(row=0, column=0, padx=(0, 5), pady=2)
         self.map_size_label = ttk.Label(controls_frame, text=f"{map_width} x {map_height}")
@@ -4411,7 +4412,7 @@ class TileEditorApp:
         self.map_coords_label.grid(row=0, column=3, padx=(10, 5), sticky="w")
 
         win_controls_frame = ttk.Frame(map_area_frame)
-        win_controls_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
+        win_controls_frame.grid(row=1, column=0, sticky=tk.W, pady=(0, 5))
         win_view_check = ttk.Checkbutton(win_controls_frame,text="Show Window View",variable=self.show_window_view,command=self.toggle_window_view)
         win_view_check.grid(row=0, column=0, padx=5, sticky="w")
         win_w_label = ttk.Label(win_controls_frame, text="Width:")
@@ -4428,7 +4429,7 @@ class TileEditorApp:
         self.win_view_h_entry.bind("<Return>", lambda e: self.apply_window_size_from_entries())
 
         grid_controls_frame = ttk.Frame(map_area_frame)
-        grid_controls_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
+        grid_controls_frame.grid(row=2, column=0, sticky=tk.W, pady=(0, 5))
         st_grid_check = ttk.Checkbutton(grid_controls_frame,text="Show Supertile Grid (Press 'G' to Cycle Colors)",variable=self.show_supertile_grid,command=self.toggle_supertile_grid)
         st_grid_check.grid(row=0, column=0, padx=5, sticky="w")
         
@@ -4462,7 +4463,7 @@ class TileEditorApp:
         _debug(f" create_map_editor_widgets: Calculated map_controls_min_width = {self.map_controls_min_width}")
 
         map_canvas_frame = ttk.LabelFrame(map_area_frame, text="Map")
-        map_canvas_frame.grid(row=3, column=0, sticky=(tk.N, tk.S, tk.W, tk.E))
+        map_canvas_frame.grid(row=3, column=0, columnspan=2, sticky=tk.NSEW)
         map_canvas_frame.grid_rowconfigure(0, weight=1)
         map_canvas_frame.grid_columnconfigure(0, weight=1)
         self.map_hbar = ttk.Scrollbar(map_canvas_frame, orient=tk.HORIZONTAL)
