@@ -3024,6 +3024,10 @@ class TileEditorApp:
         self.config_file_name = "settings.json"
         self.app_settings = {}
         
+        self.tile_selector_zoom = 1.0
+        self.st_selector_zoom = 1.0
+        self.selector_margin = 1
+
         self.active_msx_palette = []
         self.selected_palette_slot = 0
 
@@ -3952,8 +3956,25 @@ class TileEditorApp:
             
             self.attr_row_frames.append(row_control_frame)
 
+        selected_color_info_frame_tile_tab = ttk.LabelFrame(left_frame, text="Selected Color Info")
+        selected_color_info_frame_tile_tab.grid(row=1, column=0, pady=(5, 5), sticky="ew")
+
+        self.selected_color_preview_canvas_tile_tab = tk.Canvas(selected_color_info_frame_tile_tab, width=48, height=48, bg="darkgrey", highlightthickness=0)
+        self.selected_color_preview_canvas_tile_tab.grid(row=0, column=0, rowspan=2, padx=5, pady=5)
+        self.selected_color_preview_canvas_tile_tab.bind("<Double-Button-1>", self._on_canvas_double_click)
+
+        self.selected_color_info_label_tile_tab = ttk.Label(selected_color_info_frame_tile_tab, text="Color: 0")
+        self.selected_color_info_label_tile_tab.grid(row=0, column=1, padx=5, sticky="sw")
+
+        self.selected_color_usage_label_tile_tab = tk.Label(selected_color_info_frame_tile_tab, text="Usage: N/A", anchor="w", justify=tk.LEFT)
+        self.selected_color_usage_label_tile_tab.grid(row=1, column=1, padx=5, sticky="nw")
+        self.selected_color_usage_label_tile_tab.bind("<Button-1>", self._handle_usage_label_click_tile_tab)
+
+        selected_color_info_frame_tile_tab.grid_rowconfigure(0, weight=1)
+        selected_color_info_frame_tile_tab.grid_rowconfigure(1, weight=1)
+
         selected_tile_info_frame = ttk.LabelFrame(left_frame, text="Selected Tile Info")
-        selected_tile_info_frame.grid(row=1, column=0, pady=(10, 5), sticky="ew")
+        selected_tile_info_frame.grid(row=2, column=0, pady=(10, 5), sticky="ew")
         
         self.selected_tile_preview_image_ref = None
 
@@ -3978,7 +3999,7 @@ class TileEditorApp:
         selected_tile_info_frame.grid_rowconfigure(1, weight=1)
 
         transform_frame = ttk.LabelFrame(left_frame, text="Transform")
-        transform_frame.grid(row=2, column=0, pady=(0, 5), sticky="ew") 
+        transform_frame.grid(row=3, column=0, pady=(5, 5), sticky="ew") 
         
         flip_h_button = ttk.Button(
             transform_frame, text="Flip H", command=self.flip_tile_horizontal
@@ -4009,10 +4030,8 @@ class TileEditorApp:
         )
         shift_right_button.grid(row=1, column=3, padx=3, pady=3)
         
-        self.mark_unused_tiles_button = ttk.Button(
-            left_frame, text="Mark Unused", command=self.handle_mark_unused_tiles
-        )
-        self.mark_unused_tiles_button.grid(row=3, column=0, pady=(5, 10), sticky="ew") 
+        self.mark_unused_tiles_button = ttk.Button(left_frame, text="Mark Unused", command=self.handle_mark_unused_tiles)
+        self.mark_unused_tiles_button.grid(row=4, column=0, pady=(5, 10), sticky="ew") 
 
         # Right Frame (Palette, Tileset Viewer, Buttons)
         right_frame = ttk.Frame(main_frame)
@@ -4051,10 +4070,11 @@ class TileEditorApp:
         right_frame.grid_rowconfigure(1, weight=0) 
         right_frame.grid_rowconfigure(2, weight=0)
 
-        padding = 1
+        margin = self.selector_margin
         num_rows_fixed = 16
-        fixed_viewer_width = NUM_TILES_ACROSS * (VIEWER_TILE_SIZE + padding) + padding
-        fixed_viewer_height = num_rows_fixed * (VIEWER_TILE_SIZE + padding) + padding
+        cell_size = int(VIEWER_TILE_SIZE * self.tile_selector_zoom) + (margin * 2)
+        fixed_viewer_width = NUM_TILES_ACROSS * cell_size
+        fixed_viewer_height = num_rows_fixed * cell_size
         
         viewer_hbar = ttk.Scrollbar(viewer_frame, orient=tk.HORIZONTAL)
         viewer_vbar = ttk.Scrollbar(viewer_frame, orient=tk.VERTICAL)
@@ -4065,7 +4085,9 @@ class TileEditorApp:
             height=fixed_viewer_height,
             xscrollcommand=viewer_hbar.set,
             yscrollcommand=viewer_vbar.set,
+            highlightthickness=0
         )
+
         viewer_hbar.config(command=self.tileset_canvas.xview)
         viewer_vbar.config(command=self.tileset_canvas.yview)
         self.tileset_canvas.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.W, tk.E))
@@ -4157,6 +4179,7 @@ class TileEditorApp:
             highlightthickness=0
         )
         self.st_tab_selected_tile_preview_canvas.grid(row=0, column=0, rowspan=3, padx=5, pady=5, sticky="n")
+        self.st_tab_selected_tile_preview_canvas.bind("<Double-Button-1>", self._on_canvas_double_click)
 
         self.st_tab_selected_tile_info_label = ttk.Label(st_tab_tile_info_frame, text="Tile: 0")
         self.st_tab_selected_tile_info_label.grid(row=0, column=1, padx=5, sticky="nw")
@@ -4185,7 +4208,8 @@ class TileEditorApp:
             bg="darkgrey",
             highlightthickness=0
         )
-        self.selected_supertile_preview_canvas.grid(row=0, column=0, rowspan=3, padx=5, pady=5, sticky="n")
+        self.selected_supertile_preview_canvas.grid(row=0, column=0, rowspan=3, padx=5, pady=5)
+        self.selected_supertile_preview_canvas.bind("<Double-Button-1>", self._on_canvas_double_click)
 
         self.selected_supertile_info_label = ttk.Label(selected_st_info_frame, text="Supertile: 0")
         self.selected_supertile_info_label.grid(row=0, column=1, padx=5, sticky="nw")
@@ -4253,10 +4277,11 @@ class TileEditorApp:
         # Use pack with anchor="nw" to align left and prevent horizontal/vertical expansion.
         tileset_viewer_frame.pack(side=tk.TOP, expand=False, pady=(0, 10), anchor="nw")
 
-        padding = 1
+        margin = self.selector_margin
         num_rows_fixed = 16
-        fixed_viewer_width = NUM_TILES_ACROSS * (VIEWER_TILE_SIZE + padding) + padding
-        fixed_viewer_height = num_rows_fixed * (VIEWER_TILE_SIZE + padding) + padding
+        cell_size = int(VIEWER_TILE_SIZE * self.tile_selector_zoom) + (margin * 2)
+        fixed_viewer_width = NUM_TILES_ACROSS * cell_size
+        fixed_viewer_height = num_rows_fixed * cell_size
         
         st_viewer_hbar = ttk.Scrollbar(tileset_viewer_frame, orient=tk.HORIZONTAL)
         st_viewer_vbar = ttk.Scrollbar(tileset_viewer_frame, orient=tk.VERTICAL)
@@ -4267,6 +4292,7 @@ class TileEditorApp:
             height=fixed_viewer_height,
             xscrollcommand=st_viewer_hbar.set,
             yscrollcommand=st_viewer_vbar.set,
+            highlightthickness=0
         )
 
         st_viewer_hbar.config(command=self.st_tileset_canvas.xview)
@@ -4380,10 +4406,11 @@ class TileEditorApp:
         self.map_editor_palette_pane_container = palette_area_frame
 
         map_area_frame.grid_columnconfigure(0, weight=1)
+        map_area_frame.grid_columnconfigure(1, weight=0)
         map_area_frame.grid_rowconfigure(3, weight=1) 
         
         controls_frame = ttk.Frame(map_area_frame)
-        controls_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
+        controls_frame.grid(row=0, column=0, sticky=tk.W, pady=(0, 5))
         size_label = ttk.Label(controls_frame, text="Map Size:")
         size_label.grid(row=0, column=0, padx=(0, 5), pady=2)
         self.map_size_label = ttk.Label(controls_frame, text=f"{map_width} x {map_height}")
@@ -4402,7 +4429,7 @@ class TileEditorApp:
         self.map_coords_label.grid(row=0, column=3, padx=(10, 5), sticky="w")
 
         win_controls_frame = ttk.Frame(map_area_frame)
-        win_controls_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
+        win_controls_frame.grid(row=1, column=0, sticky=tk.W, pady=(0, 5))
         win_view_check = ttk.Checkbutton(win_controls_frame,text="Show Window View",variable=self.show_window_view,command=self.toggle_window_view)
         win_view_check.grid(row=0, column=0, padx=5, sticky="w")
         win_w_label = ttk.Label(win_controls_frame, text="Width:")
@@ -4419,10 +4446,32 @@ class TileEditorApp:
         self.win_view_h_entry.bind("<Return>", lambda e: self.apply_window_size_from_entries())
 
         grid_controls_frame = ttk.Frame(map_area_frame)
-        grid_controls_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
+        grid_controls_frame.grid(row=2, column=0, sticky=tk.W, pady=(0, 5))
         st_grid_check = ttk.Checkbutton(grid_controls_frame,text="Show Supertile Grid (Press 'G' to Cycle Colors)",variable=self.show_supertile_grid,command=self.toggle_supertile_grid)
         st_grid_check.grid(row=0, column=0, padx=5, sticky="w")
         
+        map_st_info_frame = ttk.LabelFrame(map_area_frame, text="Selected Supertile Info")
+        map_st_info_frame.grid(row=0, column=1, rowspan=3, padx=(20, 5), pady=(0, 5), sticky=tk.NE)
+
+        self.map_selected_st_preview_image_ref = None
+        self.map_selected_st_preview_canvas = tk.Canvas(map_st_info_frame, width=64, height=64, bg="darkgrey", highlightthickness=0)
+        self.map_selected_st_preview_canvas.grid(row=0, column=0, rowspan=3, padx=5, pady=5, sticky="n")
+        self.map_selected_st_preview_canvas.bind("<Double-Button-1>", lambda e: (_debug("[DEBUG BINDING] Double-click on Map Info Panel"), self._on_canvas_double_click(e)))
+
+        self.map_selected_st_info_label = ttk.Label(map_st_info_frame, text="Supertile: 0")
+        self.map_selected_st_info_label.grid(row=0, column=1, padx=5, sticky="nw")
+
+        self.map_selected_st_composition_label = ttk.Label(map_st_info_frame, text="Contains: N/A")
+        self.map_selected_st_composition_label.grid(row=1, column=1, padx=5, sticky="nw")
+        
+        self.map_selected_st_usage_label = tk.Label(map_st_info_frame, text="Used on Map: N/A", anchor="w", justify=tk.LEFT)
+        self.map_selected_st_usage_label.grid(row=2, column=1, padx=5, sticky="nw")
+        self.map_selected_st_usage_label.bind("<Button-1>", lambda e: self.show_map_locations_using_supertile(selected_supertile_for_map))
+
+        map_st_info_frame.grid_rowconfigure(0, weight=1)
+        map_st_info_frame.grid_rowconfigure(1, weight=1)
+        map_st_info_frame.grid_rowconfigure(2, weight=1)
+
         map_area_frame.update_idletasks() 
         controls_frame_width = controls_frame.winfo_reqwidth()
         win_controls_frame_width = win_controls_frame.winfo_reqwidth()
@@ -4431,7 +4480,7 @@ class TileEditorApp:
         _debug(f" create_map_editor_widgets: Calculated map_controls_min_width = {self.map_controls_min_width}")
 
         map_canvas_frame = ttk.LabelFrame(map_area_frame, text="Map")
-        map_canvas_frame.grid(row=3, column=0, sticky=(tk.N, tk.S, tk.W, tk.E))
+        map_canvas_frame.grid(row=3, column=0, columnspan=2, sticky=tk.NSEW)
         map_canvas_frame.grid_rowconfigure(0, weight=1)
         map_canvas_frame.grid_columnconfigure(0, weight=1)
         self.map_hbar = ttk.Scrollbar(map_canvas_frame, orient=tk.HORIZONTAL)
@@ -4628,6 +4677,7 @@ class TileEditorApp:
                 self.update_tile_info_label()
                 recalc_usage = changed_level != 'tile_edit'
                 self._update_selected_tile_info_panel(update_usage_counts=recalc_usage)
+                self._update_selected_color_info_panel_tile_tab()
 
         elif current_tab_index == 2:
             if changed_level in ["all", "supertile", "tile_select", "tile_edit"] or palette_changed:
@@ -4652,6 +4702,7 @@ class TileEditorApp:
                 )
                 self.update_map_info_labels()
                 self.draw_minimap()
+                self._update_selected_supertile_info_panel()
 
     # ... (draw_editor_canvas, draw_attribute_editor, draw_palette unchanged) ...
     def draw_editor_canvas(self):
@@ -4851,13 +4902,22 @@ class TileEditorApp:
 
         try:
             canvas.delete("all")
-            padding = 1
-            size = VIEWER_TILE_SIZE
-            max_rows = math.ceil(len(tileset_patterns) / NUM_TILES_ACROSS)
-            canvas_height = max(1, max_rows * (size + padding) + padding)  
-            canvas_width = max(
-                1, NUM_TILES_ACROSS * (size + padding) + padding
-            )  
+
+            zoom = self.tile_selector_zoom
+            margin = self.selector_margin
+            size = int(VIEWER_TILE_SIZE * zoom)
+            cell_size = size + (margin * 2)
+            cols = NUM_TILES_ACROSS
+            
+            # Lock the layout values onto the canvas for the click logic to use
+            canvas.locked_cols = cols
+            canvas.locked_cell_size = cell_size
+            canvas.locked_margin = margin
+            
+            max_rows = math.ceil(len(tileset_patterns) / cols)
+            canvas_height = max(1, max_rows * cell_size)
+            canvas_width = max(1, cols * cell_size)
+
             str_scroll = f"0 0 {float(canvas_width)} {float(canvas_height)}"
 
             current_scroll = ""
@@ -4875,8 +4935,8 @@ class TileEditorApp:
 
             for i in range(len(tileset_patterns)):
                 tile_r, tile_c = divmod(i, NUM_TILES_ACROSS)
-                base_x = tile_c * (size + padding) + padding
-                base_y = tile_r * (size + padding) + padding
+                base_x = tile_c * cell_size + margin
+                base_y = tile_r * cell_size + margin
 
                 img = self.create_tile_image(i, size)
                 canvas.create_image(
@@ -4900,10 +4960,12 @@ class TileEditorApp:
                     outline_color = "blue"
                     outline_width = 3
 
-                bx1 = max(0, base_x - padding / 2)
-                by1 = max(0, base_y - padding / 2)
-                bx2 = base_x + size + padding / 2
-                by2 = base_y + size + padding / 2
+                # Draw border outside the image to prevent overlap
+                bx1 = base_x - 1
+                by1 = base_y - 1
+                bx2 = base_x + size + 1
+                by2 = base_y + size + 1
+
                 canvas.create_rectangle(
                     bx1,
                     by1,
@@ -4976,9 +5038,12 @@ class TileEditorApp:
                 return
             canvas.delete("all") # Clear previous items
             
-            item_pixel_w = self.supertile_grid_width * TILE_WIDTH
-            item_pixel_h = self.supertile_grid_height * TILE_HEIGHT
-            padding = 1 
+            zoom = self.st_selector_zoom
+            margin = self.selector_margin
+            item_pixel_w = int((self.supertile_grid_width * TILE_WIDTH) * zoom)
+            item_pixel_h = int((self.supertile_grid_height * TILE_HEIGHT) * zoom)
+            cell_w = item_pixel_w + (margin * 2)
+            cell_h = item_pixel_h + (margin * 2)
 
             if item_pixel_w <= 0 or item_pixel_h <= 0:
                 _debug(f" draw_supertile_selector: Invalid item_pixel_w/h ({item_pixel_w}x{item_pixel_h}). Aborting.")
@@ -4992,28 +5057,27 @@ class TileEditorApp:
                  canvas.after(100, lambda: self.draw_supertile_selector(canvas, highlighted_supertile_index))
                  return
             
-            _debug(f" draw_supertile_selector: Actual Canvas Width: {actual_canvas_width}, Item Pixel W: {item_pixel_w}")
-
-            # Calculate how many items can fit, ensuring at least one if possible.
-            if item_pixel_w + 2 * padding > actual_canvas_width : # Not even one fits with padding on both sides
-                items_across = 0 # Or 1 if you want to force one and let it clip/be tiny
-                if item_pixel_w <= actual_canvas_width : # Fits without padding
-                    items_across = 1
-                # else: it's wider than canvas, items_across remains 0 (or handle as error/special case)
+            if cell_w > actual_canvas_width:
+                items_across = 1 if item_pixel_w <= actual_canvas_width else 1
             else:
-                # Calculate max integer number of items that can fit
-                items_across = (actual_canvas_width - padding) // (item_pixel_w + padding)
+                items_across = actual_canvas_width // cell_w
             
-            items_across = max(1, items_across) # Ensure at least 1 item is planned if possible, even if it overflows slightly
-                                                # or if the canvas is very narrow. If item_pixel_w itself is > canvas_width,
-                                                # it will still draw 1 item that will be clipped by the canvas viewport.
+            items_across = max(1, items_across)
 
+            _debug(f" draw_supertile_selector: Actual Canvas Width: {actual_canvas_width}, Item Pixel W: {item_pixel_w}")
             _debug(f" draw_supertile_selector: Calculated items_across: {items_across}")
 
+            # Lock the layout values onto the canvas for the click logic to use
+            canvas.locked_cols = items_across
+            canvas.locked_cell_size_w = cell_w
+            canvas.locked_cell_size_h = cell_h
+            canvas.locked_margin = margin
+
             num_logical_rows = math.ceil(len(supertiles_data) / items_across) if items_across > 0 else len(supertiles_data)
+
             # Scrollregion width should be based on the calculated items_across to fit them snugly
-            scroll_content_width = (items_across * item_pixel_w) + ((items_across + 1) * padding)
-            scroll_content_height = (num_logical_rows * item_pixel_h) + ((num_logical_rows + 1) * padding)
+            scroll_content_width = items_across * cell_w
+            scroll_content_height = num_logical_rows * cell_h
             scroll_content_width = max(1.0, float(scroll_content_width))
             scroll_content_height = max(1.0, float(scroll_content_height))
 
@@ -5033,9 +5097,11 @@ class TileEditorApp:
             # Optimized drawing for visible rows (same as before)
             view_y1 = canvas.canvasy(0)
             view_y2 = canvas.canvasy(canvas.winfo_height())
+
             # For a vertically scrolling list, start_draw_col is always 0, end_draw_col is items_across
-            start_draw_row = max(0, int(view_y1 // (item_pixel_h + padding)))
-            end_draw_row = min(num_logical_rows, int(math.ceil(view_y2 / (item_pixel_h + padding))))
+            start_draw_row = max(0, int(view_y1 // cell_h))
+            end_draw_row = min(num_logical_rows, int(math.ceil(view_y2 / cell_h)))
+            
             # Ensure at least one row is attempted if there's content, and end_draw_row covers partials
             if num_logical_rows > 0 and end_draw_row == start_draw_row and view_y2 > view_y1:
                  end_draw_row = max(end_draw_row, start_draw_row +1) # Ensure at least one iteration if content exists and view is valid
@@ -5049,8 +5115,8 @@ class TileEditorApp:
                     st_idx = r_grid * items_across + c_grid
                     if st_idx >= len(supertiles_data): break
 
-                    base_x = (c_grid * (item_pixel_w + padding)) + padding
-                    base_y = (r_grid * (item_pixel_h + padding)) + padding
+                    base_x = (c_grid * cell_w) + margin
+                    base_y = (r_grid * cell_h) + margin
 
                     img = self.create_supertile_image(st_idx, item_pixel_w, item_pixel_h) 
                     
@@ -5064,10 +5130,10 @@ class TileEditorApp:
                     elif st_idx == highlighted_supertile_index: outline_color = "red"; outline_width = 2
                     elif st_idx in self.marked_unused_supertiles: outline_color = "blue"; outline_width = 3
                     
-                    bx1 = base_x - (padding / 2 if padding > 0 else 0.5) 
-                    by1 = base_y - (padding / 2 if padding > 0 else 0.5)
-                    bx2 = base_x + item_pixel_w + (padding / 2 if padding > 0 else 0.5)
-                    by2 = base_y + item_pixel_h + (padding / 2 if padding > 0 else 0.5)
+                    bx1 = base_x - 1
+                    by1 = base_y - 1
+                    bx2 = base_x + item_pixel_w + 1
+                    by2 = base_y + item_pixel_h + 1
                     
                     if not canvas.winfo_exists(): return
                     canvas.create_rectangle(
@@ -5596,6 +5662,8 @@ class TileEditorApp:
                 if selected_color_index != index_to_select:
                     selected_color_index = index_to_select
                     self.draw_palette()
+                    # Refresh the color info panel to reflect the new selection
+                    self._update_selected_color_info_panel_tile_tab()
 
         # Schedule the selection to happen after a delay
         if 0 <= clicked_index < 16:
@@ -5981,6 +6049,14 @@ class TileEditorApp:
                 self.draw_map_canvas() 
                 self.draw_minimap()    
                 self._request_supertile_usage_refresh()
+
+                # Increment the persisted count and update the label immediately
+                if hasattr(self, 'map_selected_st_usage_count'):
+                    self.map_selected_st_usage_count += 1
+                    if hasattr(self, 'map_selected_st_usage_label'):
+                        self.map_selected_st_usage_label.config(text=f"Used {self.map_selected_st_usage_count} times on map.")
+                        # Since the count is now > 0, ensure the label has the link styling
+                        self.map_selected_st_usage_label.config(fg="blue", font=self.link_font, cursor="hand2")
 
             last_painted_map_cell = current_cell_id
 
@@ -6464,6 +6540,9 @@ class TileEditorApp:
         self._clear_paste_preview_rect()
         self.is_shift_pressed = False
         self.is_ctrl_pressed = False
+
+        # Configure the Map Info Panel for the new dimensions
+        self._setup_map_selected_st_info_panel()
 
     def save_palette(self, filepath=None, is_standalone_operation=True):
         save_path = filepath
@@ -7126,6 +7205,7 @@ class TileEditorApp:
                     self.supertile_image_cache.clear()
                     self.map_render_cache.clear()
                     self.invalidate_minimap_background_cache()
+                    self._setup_map_selected_st_info_panel()
                     self.update_all_displays(changed_level="all")
                     self._update_editor_button_states()
                     self._update_edit_menu_state()
@@ -8092,13 +8172,15 @@ class TileEditorApp:
             return
 
         # Define layout parameters
-        padding = 1
-        tile_size = VIEWER_TILE_SIZE
+        zoom = self.tile_selector_zoom
+        margin = self.selector_margin
+        size = int(VIEWER_TILE_SIZE * zoom)
+        cell_size = size + (margin * 2)
         items_per_row = NUM_TILES_ACROSS
 
         # Calculate target row and y-coordinate
         row, _ = divmod(tile_index, items_per_row)
-        target_y = row * (tile_size + padding)
+        target_y = row * cell_size
 
         # --- Scroll main viewer ---
         canvas_main = self.tileset_canvas
@@ -8173,12 +8255,15 @@ class TileEditorApp:
             _debug("   No relevant selector canvas is active/found to scroll.")
             return
 
-        item_pixel_h_content = self.supertile_grid_height * TILE_HEIGHT
-        item_pixel_w_content = self.supertile_grid_width * TILE_WIDTH
-        padding = 1
+        zoom = self.st_selector_zoom
+        margin = self.selector_margin
+        item_w = int((self.supertile_grid_width * TILE_WIDTH) * zoom)
+        item_h = int((self.supertile_grid_height * TILE_HEIGHT) * zoom)
+        cell_w = item_w + (margin * 2)
+        cell_h = item_h + (margin * 2)
 
-        if item_pixel_w_content <= 0 or item_pixel_h_content <= 0:
-            _debug(f"   Invalid item content pixel dimensions (W:{item_pixel_w_content}, H:{item_pixel_h_content}). Aborting.")
+        if item_w <= 0 or item_h <= 0:
+            _debug(f"   Invalid item content pixel dimensions (W:{item_w}, H:{item_h}). Aborting.")
             return
 
         for canvas_info in canvases_to_scroll:
@@ -8200,22 +8285,15 @@ class TileEditorApp:
                     _debug(f"     {canvas_name} - Canvas dimensions too small. Skipping scroll.")
                     continue
                 
-                items_across_for_this_canvas = 0
-                denominator_check = item_pixel_w_content + padding
-                if denominator_check <= 0:
-                    items_across_for_this_canvas = 1
-                elif item_pixel_w_content + (2 * padding) > actual_canvas_width:
-                    items_across_for_this_canvas = 0
-                    if item_pixel_w_content <= actual_canvas_width:
-                        items_across_for_this_canvas = 1
+                if cell_w > actual_canvas_width:
+                    items_across = 1
                 else:
-                    items_across_for_this_canvas = (actual_canvas_width - padding) // denominator_check
-                items_across_for_this_canvas = max(1, items_across_for_this_canvas)
-                _debug(f"     {canvas_name} - Calculated items_across: {items_across_for_this_canvas}")
+                    items_across = actual_canvas_width // cell_w
+                items_across = max(1, items_across)
 
-                target_row, _ = divmod(supertile_index, items_across_for_this_canvas)
-                target_item_y_top_content = target_row * (item_pixel_h_content + padding) + padding
-                target_item_y_bottom_content = target_item_y_top_content + item_pixel_h_content
+                target_row, _ = divmod(supertile_index, items_across)
+                target_item_y_top_content = target_row * cell_h
+                target_item_y_bottom_content = target_item_y_top_content + cell_h
                 _debug(f"     {canvas_name} - Target ST Index: {supertile_index}, Target Row: {target_row}")
                 _debug(f"     {canvas_name} - Target Item Y Content (top/bottom): {target_item_y_top_content} / {target_item_y_bottom_content}")
 
@@ -9673,6 +9751,8 @@ class TileEditorApp:
                         self.update_map_info_labels()
                         # Scroll the selector to the selected supertile
                         self.scroll_selectors_to_supertile(selected_supertile_for_map)
+                        # Update the Info Panel to show the newly picked supertile
+                        self._update_selected_supertile_info_panel()
                 else:
                     print(
                         f"Right-click: Supertile index {clicked_supertile_index} at map [{map_row},{map_col}] is out of bounds (max {len(supertiles_data)-1})."
@@ -10392,98 +10472,47 @@ class TileEditorApp:
         return True
 
     def _get_index_from_canvas_coords(self, canvas, x_event, y_event, item_type_str):
-        padding = 1
-        items_across_calc = 0
-        item_render_w = 0
-        item_render_h = 0
-        max_items_count = 0
-
-        if not canvas.winfo_exists(): # Early exit if canvas is gone
-            _debug(f" _get_index_from_canvas_coords: Canvas {canvas} does not exist.")
+        if not canvas.winfo_exists():
             return -1 
 
+        # Read the exact layout values locked onto the canvas by the drawing methods
+        margin = getattr(canvas, 'locked_margin', self.selector_margin)
+        items_across_calc = getattr(canvas, 'locked_cols', 1)
+        
         if item_type_str == "tile":
-            items_across_calc = NUM_TILES_ACROSS # Constant for tile viewers
-            item_render_w = VIEWER_TILE_SIZE
-            item_render_h = VIEWER_TILE_SIZE
+            cell_w = getattr(canvas, 'locked_cell_size', 1)
+            cell_h = cell_w
             max_items_count = len(tileset_patterns)
-        elif item_type_str == "supertile":
-            item_render_w = self.supertile_grid_width * TILE_WIDTH
-            item_render_h = self.supertile_grid_height * TILE_HEIGHT
+        else: # supertile
+            cell_w = getattr(canvas, 'locked_cell_size_w', 1)
+            cell_h = getattr(canvas, 'locked_cell_size_h', 1)
             max_items_count = len(supertiles_data)
-
-            if item_render_w <= 0 or item_render_h <= 0:
-                _debug(f" _get_index_from_canvas_coords: Invalid item_render_w/h for supertile ({item_render_w}x{item_render_h}).")
-                return -1
-
-            actual_canvas_w = canvas.winfo_width()
-            if actual_canvas_w <= 1: # Canvas not sized yet or too small
-                _debug(f" _get_index_from_canvas_coords: actual_canvas_w ({actual_canvas_w}) too small for supertile.")
-                return -1 
-
-            # This logic should now be identical to the one in draw_supertile_selector
-            if item_render_w + (2 * padding) > actual_canvas_w : # Not even one fits with padding on both sides
-                items_across_calc = 0 
-                if item_render_w <= actual_canvas_w : # Fits if no padding considered for this check
-                    items_across_calc = 1
-                # else: it's wider than canvas, items_across_calc remains 0 (or handle as error/special case)
-            else:
-                # Calculate max integer number of items that can fit
-                if (item_render_w + padding) <= 0: # Avoid division by zero if item_render_w is huge negative (should not happen)
-                    items_across_calc = 0
-                else:
-                    items_across_calc = (actual_canvas_w - padding) // (item_render_w + padding)
-            
-            items_across_calc = max(1, items_across_calc) # Ensure at least 1 item if possible
-            _debug(f" _get_index_from_canvas_coords (supertile): CanvasW={actual_canvas_w}, ItemW={item_render_w}, Calculated items_across_calc={items_across_calc}")
-
-        else:
-            _error(f" _get_index_from_canvas_coords: Invalid item_type '{item_type_str}'")
-            return -1
-
-        if item_render_w <= 0 or item_render_h <= 0 or items_across_calc <= 0:
-            _error(f" _get_index_from_canvas_coords: Invalid calculated layout params for {item_type_str} (item_w={item_render_w}, item_h={item_render_h}, items_across={items_across_calc})")
-            return -1
 
         try:
             canvas_content_x = canvas.canvasx(x_event)
             canvas_content_y = canvas.canvasy(y_event)
         except tk.TclError:
-            _error(f" _get_index_from_canvas_coords: TclError getting canvasx/y for {item_type_str}. Canvas likely not ready.")
             return -1 
 
-        # Calculate total content dimensions based on dynamic layout
+        # Calculate total content dimensions based on the locked layout
         num_logical_rows_calc = math.ceil(max_items_count / items_across_calc) if items_across_calc > 0 else 0
-        # Use actual_canvas_w for total_content_w if items_across_calc is based on it,
-        # or derive from items_across_calc if that's the definitive count.
-        # The scrollregion width in draw_supertile_selector is based on its items_across.
-        # So, use items_across_calc here for consistency with how scrollregion is set.
-        total_content_w = (items_across_calc * item_render_w) + ((items_across_calc + 1) * padding)
-        total_content_h = (num_logical_rows_calc * item_render_h) + ((num_logical_rows_calc + 1) * padding)
+        total_content_w = items_across_calc * cell_w
+        total_content_h = num_logical_rows_calc * cell_h
         
-        # Check if click is within the logical content area defined by items_across_calc
-        # This check becomes more important if items_across_calc differs from what might physically fit
-        # if the canvas is wider than what items_across_calc would fill.
-        # However, with the unified logic, items_across_calc should reflect the drawn layout.
+        # Bounds check against the calculated content area
         if not (canvas_content_x >= 0 and canvas_content_x < total_content_w and \
                 canvas_content_y >= 0 and canvas_content_y < total_content_h):
-            # If click is outside the calculated total content width/height based on items_across_calc,
-            # it might be in empty space if the canvas is wider than this content.
-            # Consider it "outside grid content area".
-            _debug(f" _get_index_from_canvas_coords: Click ({canvas_content_x},{canvas_content_y}) outside content area ({total_content_w}x{total_content_h}).")
             return -2 
 
-        col_calc = 0
-        if (item_render_w + padding) > 0 : # Avoid division by zero
-            col_calc = int(canvas_content_x // (item_render_w + padding))
+        # Subtract margin before dividing to fix the Northwest shift alignment
+        col_calc = int((canvas_content_x - margin) // cell_w)
+        row_calc = int((canvas_content_y - margin) // cell_h)
         
-        row_calc = 0
-        if (item_render_h + padding) > 0 : # Avoid division by zero
-            row_calc = int(canvas_content_y // (item_render_h + padding))
-        
-        col_calc = max(0, col_calc) 
+        # Safeguard against clicking in the thin initial margin
+        col_calc = max(0, col_calc)
         row_calc = max(0, row_calc)
 
+        # Calculate the final absolute index
         index_calc = row_calc * items_across_calc + col_calc
 
         if 0 <= index_calc < max_items_count:
@@ -10560,32 +10589,32 @@ class TileEditorApp:
             self.drag_indicator_id = None
 
         if target_idx_motion >= 0 and canvas_motion == target_canvas_for_indicator and not self.is_alt_pressed:
-            padding_ind = 1
-            item_w_ind, item_h_ind, items_across_ind, max_items_ind = 0,0,0,0
-
+            margin = self.selector_margin
             if self.drag_item_type == "tile":
-                item_w_ind = VIEWER_TILE_SIZE
-                item_h_ind = VIEWER_TILE_SIZE
+                zoom = self.tile_selector_zoom
+                item_w = int(VIEWER_TILE_SIZE * zoom)
+                item_h = int(VIEWER_TILE_SIZE * zoom)
                 items_across_ind = NUM_TILES_ACROSS
                 max_items_ind = len(tileset_patterns)
             elif self.drag_item_type == "supertile":
-                item_w_ind = self.supertile_grid_width * TILE_WIDTH
-                item_h_ind = self.supertile_grid_height * TILE_HEIGHT
+                zoom = self.st_selector_zoom
+                item_w = int((self.supertile_grid_width * TILE_WIDTH) * zoom)
+                item_h = int((self.supertile_grid_height * TILE_HEIGHT) * zoom)
                 max_items_ind = len(supertiles_data)
-                actual_canvas_w_ind = target_canvas_for_indicator.winfo_width()
-                if (item_w_ind + padding_ind) > 0:
-                    items_across_ind = max(1, (actual_canvas_w_ind - padding_ind) // (item_w_ind + padding_ind))
-                else:
-                    items_across_ind = 1
+                actual_canvas_w = target_canvas_for_indicator.winfo_width()
+                cell_w_check = item_w + (margin * 2)
+                items_across_ind = max(1, actual_canvas_w // cell_w_check)
 
-            if item_w_ind > 0 and item_h_ind > 0 and items_across_ind > 0:
+            cell_w = item_w + (margin * 2)
+            cell_h = item_h + (margin * 2)
+
+            if cell_w > 0 and cell_h > 0 and items_across_ind > 0:
                 indicator_pos_idx = min(target_idx_motion, max_items_ind) 
-                
                 row_ind, col_ind = divmod(indicator_pos_idx, items_across_ind)
                 
-                line_x_pos = (col_ind * (item_w_ind + padding_ind)) + (padding_ind / 2) 
-                line_y1_pos = (row_ind * (item_h_ind + padding_ind)) + (padding_ind / 2)
-                line_y2_pos = line_y1_pos + item_h_ind 
+                line_x_pos = col_ind * cell_w
+                line_y1_pos = row_ind * cell_h
+                line_y2_pos = line_y1_pos + cell_h 
 
                 self.drag_indicator_id = target_canvas_for_indicator.create_line(
                     line_x_pos, line_y1_pos, line_x_pos, line_y2_pos,
@@ -14477,19 +14506,12 @@ class TileEditorApp:
 
         return map_usage_count, unique_tile_count
 
-    def create_supertile_preview_image(self, supertile_index, box_width, box_height):
-        final_photo = tk.PhotoImage(width=box_width, height=box_height)
-        try:
-            bg_color = self.root.cget("bg")
-            final_photo.put(bg_color, to=(0, 0, box_width, box_height))
-        except (tk.TclError, AttributeError):
-            final_photo.put("#F0F0F0", to=(0, 0, box_width, box_height))
-
+    def create_supertile_preview_image(self, supertile_index, box_width, box_height, fit_mode="best"):
         st_width_msx = self.supertile_grid_width * TILE_WIDTH
         st_height_msx = self.supertile_grid_height * TILE_HEIGHT
 
         if st_width_msx <= 0 or st_height_msx <= 0:
-             return final_photo
+             return tk.PhotoImage(width=1, height=1)
 
         pil_supertile_native = self.create_map_render_of_supertile(
             supertile_index,
@@ -14498,49 +14520,71 @@ class TileEditorApp:
         )
 
         if not pil_supertile_native:
-            return final_photo
+            return tk.PhotoImage(width=1, height=1)
 
+        # Calculate scales for both axes
         scale_x = box_width / st_width_msx
         scale_y = box_height / st_height_msx
-        scale = min(scale_x, scale_y)
 
-        scaled_width = int(st_width_msx * scale)
-        scaled_height = int(st_height_msx * scale)
+        # Calculate scale based on the requested fit mode
+        if fit_mode == "height":
+            scale = scale_y
+        else:
+            scale = min(scale_x, scale_y)
 
-        if scaled_width < 1 or scaled_height < 1:
-            return final_photo
+        scaled_width = max(1, int(st_width_msx * scale))
+        scaled_height = max(1, int(st_height_msx * scale))
 
         pil_supertile_scaled = pil_supertile_native.resize(
             (scaled_width, scaled_height),
             Image.Resampling.NEAREST
         )
 
-        temp_photo = ImageTk.PhotoImage(pil_supertile_scaled)
+        return ImageTk.PhotoImage(pil_supertile_scaled)
 
-        paste_x = (box_width - scaled_width) // 2
-        paste_y = (box_height - scaled_height) // 2
+    def _setup_map_selected_st_info_panel(self):
+        """
+        Configures the layout and dimensions of the Map Editor's Info Panel.
+        Should only be called when supertile grid dimensions change (New/Open Project).
+        """
+        if not hasattr(self, 'map_selected_st_preview_canvas') or \
+           not self.map_selected_st_preview_canvas.winfo_exists():
+            return
 
-        final_photo.tk.call(final_photo, 'copy', temp_photo, '-from', 0, 0, scaled_width, scaled_height, '-to', paste_x, paste_y)
+        # Calculate the aspect ratio of a supertile in this project
+        st_width_msx = self.supertile_grid_width * TILE_WIDTH
+        st_height_msx = self.supertile_grid_height * TILE_HEIGHT
 
-        return final_photo
+        if st_height_msx > 0:
+            # We want height to be exactly 64 pixels
+            preview_h = 64
+            scale = preview_h / st_height_msx
+            target_w = int(st_width_msx * scale)
+            
+            # Apply the calculated width to the canvas once
+            self.map_selected_st_preview_canvas.config(width=target_w, height=preview_h)
+            _debug(f"[_setup_map_selected_st_info_panel] Map preview resized to {target_w}x{preview_h}")
 
     def _update_selected_supertile_info_panel(self):
         if not hasattr(self, 'selected_supertile_preview_canvas') or \
            not self.selected_supertile_preview_canvas.winfo_exists():
             return
 
+        # Update Supertile Editor Tab Panel (Dynamic sizing within 64x64) ---
         self.selected_supertile_info_label.config(text=f"Supertile: {current_supertile_index}")
 
-        preview_size = 64
-        img = self.create_supertile_preview_image(current_supertile_index, preview_size, preview_size)
+        # Keep Best Fit logic to stay within 64x64 bounds
+        preview_max = 64
+        img = self.create_supertile_preview_image(current_supertile_index, preview_max, preview_max, fit_mode="best")
         self.selected_supertile_preview_image_ref = img
+        
+        # Resize canvas to match the image precisely (removes gutters)
+        self.selected_supertile_preview_canvas.config(width=img.width(), height=img.height())
         self.selected_supertile_preview_canvas.delete("all")
         self.selected_supertile_preview_canvas.create_image(0, 0, image=img, anchor=tk.NW)
 
         map_usage_count, unique_tile_count = self._get_info_for_single_supertile(current_supertile_index)
-
         self.selected_supertile_composition_label.config(text=f"Contains {unique_tile_count} unique tiles.")
-        
         self.selected_supertile_usage_label.config(text=f"Used {map_usage_count} times on map.")
         
         # Conditionally style the label based on usage count
@@ -14560,6 +14604,32 @@ class TileEditorApp:
                 font=self.normal_font, # Use shared font
                 cursor=""
             )
+
+        # Replicated update logic for the Map Editor Tab panel
+        if hasattr(self, 'map_selected_st_preview_canvas') and self.map_selected_st_preview_canvas.winfo_exists():
+            self.map_selected_st_info_label.config(text=f"Supertile: {selected_supertile_for_map}")
+
+            # We use the fixed height of 64px; the canvas width was already set by the setup method
+            preview_h = 64
+            img_map = self.create_supertile_preview_image(selected_supertile_for_map, 1, preview_h, fit_mode="height")
+            self.map_selected_st_preview_image_ref = img_map
+            
+            # No .config() call here anymore; we just draw the image
+            self.map_selected_st_preview_canvas.delete("all")
+            self.map_selected_st_preview_canvas.create_image(0, 0, image=img_map, anchor=tk.NW)
+
+            # Update the persisted count and labels
+            map_usage_count, unique_tile_count = self._get_info_for_single_supertile(selected_supertile_for_map)
+            self.map_selected_st_usage_count = map_usage_count
+
+            self.map_selected_st_composition_label.config(text=f"Contains {unique_tile_count} unique tiles.")
+            self.map_selected_st_usage_label.config(text=f"Used {map_usage_count} times on map.")
+            
+            if map_usage_count > 0:
+                self.map_selected_st_usage_label.config(fg="blue", font=self.link_font, cursor="hand2")
+            else:
+                default_fg = self.map_selected_st_info_label.cget("foreground") or "#000000"
+                self.map_selected_st_usage_label.config(fg=default_fg, font=self.normal_font, cursor="")
 
     def _update_st_tab_selected_tile_info_panel(self):
         if not hasattr(self, 'st_tab_selected_tile_preview_canvas') or \
@@ -15101,6 +15171,9 @@ class TileEditorApp:
         self.clear_all_caches()
         self.invalidate_minimap_background_cache()
         self._reconfigure_supertile_definition_canvas()
+
+        # Recalculate Map Info Panel layout for the newly loaded project
+        self._setup_map_selected_st_info_panel()
 
         self._perform_project_load_ui_updates()
         _debug(" Project data loaded/created. Now restoring usage windows...")
@@ -16126,10 +16199,13 @@ class TileEditorApp:
         global current_supertile_index, supertiles_data, map_data
         
         source_widget = event.widget
+        _debug(f"[DEEP DIVE] Event received from widget: {source_widget}")
+        if hasattr(source_widget, 'winfo_name'):
+            _debug(f"[DEEP DIVE] Widget name: {source_widget.winfo_name()}")
         
         # --- FROM MAP EDITOR CANVAS ---
         if source_widget == self.map_canvas:
-            _debug("[DEEP DIVE] Request from Map to Supertile Editor.")
+            _debug("[DEEP DIVE] Request from Map Canvas to Supertile Editor.")
             canvas_x = self.map_canvas.canvasx(event.x)
             canvas_y = self.map_canvas.canvasy(event.y)
             coords = self._get_supertile_coords_from_canvas(canvas_x, canvas_y)
@@ -16141,10 +16217,11 @@ class TileEditorApp:
                 self.notebook.select(self.tab_supertile_editor)
                 self.update_all_displays(changed_level="all")
                 self.scroll_selectors_to_supertile(current_supertile_index)
+                self.supertile_def_canvas.focus_set()
 
         # --- FROM SUPERTILE DEFINITION CANVAS ---
         elif source_widget == self.supertile_def_canvas:
-            _debug("[DEEP DIVE] Request from Supertile to Tile Editor.")
+            _debug("[DEEP DIVE] Request from Supertile Definition to Tile Editor.")
             mini_tile_dsize = SUPERTILE_DEF_TILE_SIZE
             col = event.x // mini_tile_dsize
             row = event.y // mini_tile_dsize
@@ -16155,6 +16232,7 @@ class TileEditorApp:
                 self.notebook.select(self.tab_tile_editor)
                 self.update_all_displays(changed_level="all")
                 self.scroll_viewers_to_tile(current_tile_index)
+                self.editor_canvas.focus_set()
                 
         # --- FROM TILE EDITOR'S PALETTE ---
         elif source_widget == self.tile_editor_palette_canvas:
@@ -16165,10 +16243,12 @@ class TileEditorApp:
             row = event.y // (size + padding)
             clicked_index = row * 4 + col
             if 0 <= clicked_index < 16:
+                _debug(f"[DEEP DIVE] Diving to edit palette index {clicked_index}.")
                 self.selected_palette_slot = clicked_index
                 selected_color_index = clicked_index
                 self.notebook.select(self.tab_palette_editor)
                 self.update_all_displays(changed_level="all")
+                self.current_palette_canvas.focus_set()
 
         # --- FROM SUPERTILE EDITOR'S TILESET ---
         elif source_widget == self.st_tileset_canvas:
@@ -16176,20 +16256,64 @@ class TileEditorApp:
             tile_idx_to_edit = self._get_index_from_canvas_coords(source_widget, event.x, event.y, "tile")
             if 0 <= tile_idx_to_edit < len(tileset_patterns):
                 current_tile_index = tile_idx_to_edit
+                _debug(f"[DEEP DIVE] Diving to edit Tile {tile_idx_to_edit}.")
                 selected_tile_for_supertile = tile_idx_to_edit
                 self.notebook.select(self.tab_tile_editor)
                 self.update_all_displays(changed_level="all")
                 self.scroll_viewers_to_tile(current_tile_index)
+                self.editor_canvas.focus_set()
 
         # --- FROM MAP EDITOR'S SUPERTILE PALETTE ---
         elif source_widget == self.map_supertile_selector_canvas:
-            _debug("[DEEP DIVE] Request from Map Editor Palette to Supertile Editor.")
+            _debug("[DEEP DIVE] Request from Map Editor ST Palette to Supertile Editor.")
             supertile_idx_to_edit = self._get_index_from_canvas_coords(source_widget, event.x, event.y, "supertile")
             if 0 <= supertile_idx_to_edit < len(supertiles_data):
                 current_supertile_index = supertile_idx_to_edit
+                _debug(f"[DEEP DIVE] Diving to edit Supertile {supertile_idx_to_edit}.")
                 self.notebook.select(self.tab_supertile_editor)
                 self.update_all_displays(changed_level="all")
                 self.scroll_selectors_to_supertile(current_supertile_index)
+                self.supertile_def_canvas.focus_set()
+
+        # --- FROM MAP EDITOR'S SELECTED INFO PANEL (ST IMAGE) ---
+        elif hasattr(self, 'map_selected_st_preview_canvas') and source_widget == self.map_selected_st_preview_canvas:
+            _debug(f"[DEEP DIVE] Request from Map ST Info Panel to Supertile Editor.")
+            current_supertile_index = selected_supertile_for_map
+            _debug(f"[DEEP DIVE] Diving to edit Supertile {current_supertile_index}.")
+            self.notebook.select(self.tab_supertile_editor)
+            self.update_all_displays(changed_level="all")
+            self.scroll_selectors_to_supertile(current_supertile_index)
+            self.supertile_def_canvas.focus_set()
+
+        # --- FROM TILE EDITOR'S SELECTED INFO PANEL (TILE IMAGE) ---
+        elif hasattr(self, 'selected_tile_preview_canvas') and source_widget == self.selected_tile_preview_canvas:
+            _debug("[DEEP DIVE] Request from Tile Info Panel to Palette Editor.")
+            fg_idx, _ = tileset_colors[current_tile_index][0]
+            _debug(f"[DEEP DIVE] Diving to edit palette (using Tile {current_tile_index} row 0 FG: {fg_idx}).")
+            self.selected_palette_slot = fg_idx
+            selected_color_index = fg_idx
+            self.notebook.select(self.tab_palette_editor)
+            self.update_all_displays(changed_level="all")
+            self.current_palette_canvas.focus_set()
+
+        # --- FROM TILE EDITOR'S SELECTED COLOR INFO PANEL (COLOR SWATCH) ---
+        elif hasattr(self, 'selected_color_preview_canvas_tile_tab') and source_widget == self.selected_color_preview_canvas_tile_tab:
+            _debug(f"[DEEP DIVE] Request from Tile Tab Color Info Panel to Palette Editor.")
+            # Destination: Palette Tab, selecting the specific color slot currently shown in the swatch
+            self.selected_palette_slot = selected_color_index
+            self.notebook.select(self.tab_palette_editor)
+            self.update_all_displays(changed_level="all")
+            self.current_palette_canvas.focus_set()
+
+        # --- FROM SUPERTILE EDITOR'S SELECTED TILE INFO PANEL (TILE IMAGE) ---
+        elif hasattr(self, 'st_tab_selected_tile_preview_canvas') and source_widget == self.st_tab_selected_tile_preview_canvas:
+            _debug("[DEEP DIVE] Request from ST-Tab Tile Info Panel to Tile Editor.")
+            current_tile_index = selected_tile_for_supertile
+            _debug(f"[DEEP DIVE] Diving to edit Tile {current_tile_index}.")
+            self.notebook.select(self.tab_tile_editor)
+            self.update_all_displays(changed_level="all")
+            self.scroll_viewers_to_tile(current_tile_index)
+            self.editor_canvas.focus_set()
 
     def _place_tile_in_supertile_and_set_drag_state(self, r, c):
         """Helper to call from 'after' to place a tile and set drag state."""
@@ -16773,13 +16897,23 @@ class TileEditorApp:
         canvas_w = dialog.canvas.winfo_width()
         if canvas_w <= 1: return
 
-        size = VIEWER_TILE_SIZE
-        padding = 1
-        cols = 16
-        dialog.grid_cols = cols
-        rows = (len(patterns) + cols - 1) // cols
+        zoom = self.tile_selector_zoom
+        margin = self.selector_margin
+        size = int(VIEWER_TILE_SIZE * zoom)
+        # cell_size is the total area of one tile including its margins
+        cell_size = size + (margin * 2)
+
+        # Calculate columns based on current width
+        cols = max(1, canvas_w // cell_size)
         
-        dialog.canvas.config(scrollregion=(0, 0, cols * (size + padding) + padding, rows * (size + padding) + padding))
+        # Store these on the canvas so click/motion methods use IDENTICAL values
+        dialog.canvas.locked_cols = cols
+        dialog.canvas.locked_cell_size = cell_size
+        dialog.canvas.locked_margin = margin
+        dialog.grid_cols = cols 
+
+        rows = (len(patterns) + cols - 1) // cols
+        dialog.canvas.config(scrollregion=(0, 0, cols * cell_size, rows * cell_size))
 
         if not hasattr(dialog, 'image_refs'):
             dialog.image_refs = []
@@ -16787,15 +16921,19 @@ class TileEditorApp:
 
         for i, pattern in enumerate(patterns):
             r, c = divmod(i, cols)
-            x1 = c * (size + padding) + padding
-            y1 = r * (size + padding) + padding
+            # Place image at the cell start + margin offset
+            x1 = c * cell_size + margin
+            y1 = r * cell_size + margin
             
             img = self._render_temp_tile_image(pattern, colors[i], palette, size)
-            dialog.image_refs.append(img) # Store reference
+            dialog.image_refs.append(img) 
             dialog.canvas.create_image(x1, y1, image=img, anchor="nw", tags=f"tile_{i}")
             
             if i in dialog.selection:
-                dialog.canvas.create_rectangle(x1-1, y1-1, x1+size+1, y1+size+1, outline="yellow", width=2)
+                # Border shifted 1px right/down and made 1px thinner/shorter to match main tabs
+                bx1, by1 = x1 + 1, y1 + 1
+                bx2, by2 = x1 + size, y1 + size
+                dialog.canvas.create_rectangle(bx1, by1, bx2, by2, outline="yellow", width=2)
                 
     def _render_temp_tile_image(self, pattern, colors, palette, size):
         img = tk.PhotoImage(width=size, height=size)
@@ -16943,13 +17081,26 @@ class TileEditorApp:
         return img
 
     def _on_image_canvas_motion(self, event, dialog):
-        if not dialog.winfo_exists(): return
-        size = VIEWER_TILE_SIZE
-        padding = 1
-        cx, cy = dialog.canvas.canvasx(event.x), dialog.canvas.canvasy(event.y)
-        col = int(cx // (size + padding))
-        row = int(cy // (size + padding))
-        idx = row * dialog.grid_cols + col
+        """
+        Handles mouse motion over the image/file import selection canvas.
+        Updated to support zoom and fix the index alignment shift.
+        """
+        # Retrieve layout values locked onto the canvas during the draw phase
+        cell_size = getattr(dialog.canvas, 'locked_cell_size', 1)
+        cols = getattr(dialog.canvas, 'locked_cols', 1)
+        margin = getattr(dialog.canvas, 'locked_margin', 0)
+
+        cx = dialog.canvas.canvasx(event.x)
+        cy = dialog.canvas.canvasy(event.y)
+        
+        # Subtract margin before dividing to align logic with visual images
+        col = int((cx - margin) // cell_size)
+        row = int((cy - margin) // cell_size)
+        
+        # Guard against indices calculated from the initial top/left margin
+        col = max(0, col)
+        row = max(0, row)
+        idx = row * cols + col
         
         if 0 <= idx < len(dialog.temp_tileset_patterns):
             dialog.hover_info_text_var.set(f"Grid Index: {idx}")
@@ -16958,18 +17109,30 @@ class TileEditorApp:
 
     def _on_image_canvas_left_click(self, event, dialog):
         """
-        Handles left-clicks on the image import selection canvas.
-        This logic is a direct port of the mature selection behavior from the ROM importer.
+        Handles left-clicks on the image/file import selection canvas.
         """
         if not dialog.winfo_exists(): return
         
-        # --- 1. Calculate the clicked tile index ---
-        size = VIEWER_TILE_SIZE
-        padding = 1
-        cx, cy = dialog.canvas.canvasx(event.x), dialog.canvas.canvasy(event.y)
-        col = int(cx // (size + padding))
-        row = int(cy // (size + padding))
-        idx = row * dialog.grid_cols + col
+        zoom = self.tile_selector_zoom
+        margin = self.selector_margin
+        size = int(VIEWER_TILE_SIZE * zoom)
+        cell_size = size + 1
+
+        _debug(f"[app._on_image_canvas_left_click] Zoom={zoom}; Margin={margin}; Size={size}; cell_size={cell_size}")
+
+        canvas_w = dialog.canvas.winfo_width()
+        cols = max(1, canvas_w // cell_size) if canvas_w > 1 else 1
+
+        cx = dialog.canvas.canvasx(event.x)
+        cy = dialog.canvas.canvasy(event.y)
+        
+        # Subtract margin and divide by the full cell size
+        col = int((cx - margin) // cell_size)
+        row = int((cy - margin) // cell_size)
+        
+        col = max(0, col)
+        row = max(0, row)
+        idx = row * cols + col
 
         if not (0 <= idx < len(dialog.temp_tileset_patterns)): return
 
@@ -17331,6 +17494,40 @@ class TileEditorApp:
             # The script is located alongside the main application script.
             base_path = os.path.dirname(os.path.abspath(__file__))
         return os.path.join(base_path, script_name)
+
+    def _update_selected_color_info_panel_tile_tab(self):
+        """Updates the Selected Color Info panel in the Tile Editor tab."""
+        if not hasattr(self, 'selected_color_preview_canvas_tile_tab') or \
+           not self.selected_color_preview_canvas_tile_tab.winfo_exists():
+            return
+
+        idx = selected_color_index
+        color_hex = self.active_msx_palette[idx]
+        
+        # Update labels
+        self.selected_color_info_label_tile_tab.config(text=f"Color: {idx} ({color_hex})")
+        
+        # Update canvas preview
+        canvas = self.selected_color_preview_canvas_tile_tab
+        canvas.delete("all")
+        w = canvas.winfo_width() if canvas.winfo_width() > 1 else 48
+        h = canvas.winfo_height() if canvas.winfo_height() > 1 else 48
+        canvas.create_rectangle(0, 0, w, h, fill=color_hex, outline="grey")
+
+        # Calculate usage
+        _, _, tile_refs_count = self._calculate_single_color_usage(idx)
+        self.selected_color_usage_label_tile_tab.config(text=f"Used in {tile_refs_count} tiles.")
+        
+        # Styling based on usage
+        if tile_refs_count > 0:
+            self.selected_color_usage_label_tile_tab.config(fg="blue", font=self.link_font, cursor="hand2")
+        else:
+            default_fg = self.selected_color_info_label_tile_tab.cget("foreground") or "#000000"
+            self.selected_color_usage_label_tile_tab.config(fg=default_fg, font=self.normal_font, cursor="")
+
+    def _handle_usage_label_click_tile_tab(self, event=None):
+        """Action when the color usage label in the Tile tab is clicked."""
+        self.show_tiles_using_color(selected_color_index)
 
 # print(dir(TileEditorApp))
 # exit() # Stop before GUI starts for this test
