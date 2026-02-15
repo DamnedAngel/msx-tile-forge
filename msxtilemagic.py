@@ -1133,9 +1133,9 @@ def main():
                 strategy=args.sort_tileset
             )
 
-        # Update the definitions and map with the new sorted order
-        supertile_definitions = sorted_supertiles
-        final_map_to_write = remap_indices(supertile_map, old_st_to_new_map)
+            # Update the definitions and map with the new sorted order
+            supertile_definitions = sorted_supertiles
+            final_map_to_write = remap_indices(supertile_map, old_st_to_new_map)
 
     # --- 8. Generate Output Files ---
     print("8. Generating output files...")
