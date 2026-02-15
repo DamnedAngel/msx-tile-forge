@@ -4498,7 +4498,7 @@ class TileEditorApp:
         palette_area_frame.grid_rowconfigure(0, weight=1)
         palette_area_frame.grid_columnconfigure(0, weight=1)
         st_selector_frame = ttk.LabelFrame(palette_area_frame, text="Supertile Palette (Click to select supertile to draw map)")
-        st_selector_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.W, tk.E), pady=(0,5))
+        st_selector_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.W, tk.E))
         st_selector_frame.grid_rowconfigure(0, weight=1)
         st_selector_frame.grid_columnconfigure(0, weight=1)
         padding = 1 
@@ -4525,8 +4525,7 @@ class TileEditorApp:
         self.map_supertile_selector_canvas.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.W, tk.E))
         map_st_sel_vbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         map_st_sel_hbar.grid(row=1, column=0, sticky=(tk.W, tk.E))
-        self.map_supertile_select_label = ttk.Label(palette_area_frame, text=f"Selected Supertile for Painting: {selected_supertile_for_map}")
-        self.map_supertile_select_label.grid(row=1, column=0, sticky=tk.W, pady=(0, 0))
+
         self.map_supertile_selector_canvas.bind("<Button-1>", self.handle_map_supertile_selector_click)
         self.map_supertile_selector_canvas.bind("<Double-Button-1>", self._on_canvas_double_click)
         self.map_supertile_selector_canvas.bind("<B1-Motion>", self.handle_viewer_drag_motion)
@@ -5392,9 +5391,6 @@ class TileEditorApp:
 
     def update_map_info_labels(self):
         self.map_size_label.config(text=f"{map_width} x {map_height}")
-        self.map_supertile_select_label.config(
-            text=f"Selected Supertile for Painting: {selected_supertile_for_map}"
-        )
         # Update window size entries from state variables
         self.window_view_tile_w.set(
             self.window_view_tile_w.get()
@@ -5433,6 +5429,7 @@ class TileEditorApp:
             self.root.unbind("<KeyPress-g>") 
             self.root.unbind("<KeyPress-G>")
             self.root.unbind("<Escape>")
+            self.root.unbind("<Delete>")
         except tk.TclError:
             pass 
 
@@ -5456,6 +5453,10 @@ class TileEditorApp:
         elif selected_tab_widget in [self.tab_tile_editor, self.tab_supertile_editor]:
             _debug(f" on_tab_change: Binding Escape key for {selected_tab_widget.winfo_class()} tab.")
             self.root.bind("<Escape>", self.handle_editor_escape)
+            if selected_tab_widget == self.tab_tile_editor:
+                self.root.bind("<Delete>", lambda e: self.handle_delete_tile())
+            else:
+                self.root.bind("<Delete>", lambda e: self.handle_delete_supertile())
 
         self.root.after_idle(self._update_map_cursor)
 
