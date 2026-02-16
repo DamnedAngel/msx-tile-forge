@@ -4266,6 +4266,31 @@ class TileEditorApp:
         )
         self.mark_unused_st_button.grid(row=4, column=0, pady=(5, 10), sticky="ew")
 
+                # 1x1 Supertile Operations Frame
+        self.st_1x1_ops_frame = ttk.LabelFrame(left_frame, text="1x1 Supertile Operations")
+        # Initially not gridded; visibility will be managed by _check_1x1_ui_visibility
+        
+        self.add_missing_1x1_button = ttk.Button(
+            self.st_1x1_ops_frame, 
+            text="Add missing 1x1 supertiles", 
+            command=self.handle_add_missing_1x1_supertiles
+        )
+        self.add_missing_1x1_button.pack(fill="x", padx=5, pady=2)
+
+        self.delete_repeated_1x1_button = ttk.Button(
+            self.st_1x1_ops_frame, 
+            text="Delete repeated 1x1 supertiles", 
+            command=self.handle_delete_repeated_1x1_supertiles
+        )
+        self.delete_repeated_1x1_button.pack(fill="x", padx=5, pady=2)
+
+        self.sync_1x1_order_button = ttk.Button(
+            self.st_1x1_ops_frame, 
+            text="Sync 1x1 supertiles order", 
+            command=self.handle_sync_1x1_supertiles_order
+        )
+        self.sync_1x1_order_button.pack(fill="x", padx=5, pady=(2, 5))
+
         right_frame = ttk.Frame(main_frame)
         right_frame.grid(row=0, column=1, sticky=(tk.N, tk.S, tk.W, tk.E))
         main_frame.grid_columnconfigure(1, weight=1)
@@ -7207,6 +7232,7 @@ class TileEditorApp:
                     self.map_render_cache.clear()
                     self.invalidate_minimap_background_cache()
                     self._setup_map_selected_st_info_panel()
+                    self._check_1x1_ui_visibility()
                     self.update_all_displays(changed_level="all")
                     self._update_editor_button_states()
                     self._update_edit_menu_state()
@@ -15176,6 +15202,9 @@ class TileEditorApp:
         # Recalculate Map Info Panel layout for the newly loaded project
         self._setup_map_selected_st_info_panel()
 
+        # Evaluate visibility of dimension-specific UI panels
+        self._check_1x1_ui_visibility()
+
         self._perform_project_load_ui_updates()
         _debug(" Project data loaded/created. Now restoring usage windows...")
         self._restore_window_states()
@@ -17529,6 +17558,289 @@ class TileEditorApp:
     def _handle_usage_label_click_tile_tab(self, event=None):
         """Action when the color usage label in the Tile tab is clicked."""
         self.show_tiles_using_color(selected_color_index)
+
+    def _check_1x1_ui_visibility(self):
+        """
+        Checks if the project supertile dimensions are 1x1 and 
+        shows/hides the specialized operations frame.
+        """
+        if not hasattr(self, 'st_1x1_ops_frame') or not self.st_1x1_ops_frame.winfo_exists():
+            return
+
+        if self.supertile_grid_width == 1 and self.supertile_grid_height == 1:
+            # Show the frame. It is placed in the left_frame of the Supertile Editor,
+            # positioned at row 5 (immediately below the Mark Unused button at row 4).
+            self.st_1x1_ops_frame.grid(row=5, column=0, pady=(5, 10), sticky="ew")
+            _debug("1x1 Supertile Operations frame enabled (Visible).")
+        else:
+            # Hide the frame and remove it from the layout.
+            self.st_1x1_ops_frame.grid_forget()
+            _debug("1x1 Supertile Operations frame disabled (Hidden).")
+
+    def handle_add_missing_1x1_supertiles(self):
+        """
+        Operation 1: Identifies tiles not represented by any 1x1 supertile
+        and creates new supertile definitions for them.
+        """
+        if self.supertile_grid_width != 1 or self.supertile_grid_height != 1:
+            return
+
+        # 1. Identify which tiles are already represented in the supertileset
+        represented_tiles = set()
+        for st_def in supertiles_data:
+            # In a 1x1 supertile, the tile index is at [0][0]
+            tile_idx = st_def[0][0]
+            represented_tiles.add(tile_idx)
+
+        # 2. Identify tiles that are missing from the supertileset
+        total_tiles_count = len(tileset_patterns)
+        missing_tiles = []
+        for i in range(total_tiles_count):
+            if i not in represented_tiles:
+                missing_tiles.append(i)
+
+        if not missing_tiles:
+            messagebox.showinfo("Add 1x1 Supertiles", "All tiles already have a corresponding supertile.", parent=self.root)
+            return
+
+        # 3. Check against project supertile limits
+        potential_new_total = len(supertiles_data) + len(missing_tiles)
+        if potential_new_total > self.project_supertile_limit:
+            msg = (f"Cannot add all missing supertiles.\n\n"
+                   f"Tiles missing: {len(missing_tiles)}\n"
+                   f"Space remaining: {self.project_supertile_limit - len(supertiles_data)}\n\n"
+                   f"Please increase the Supertile Limit or delete unused supertiles first.")
+            messagebox.showwarning("Supertile Limit Reached", msg, parent=self.root)
+            return
+
+        # 4. Build the command list for undoable execution
+        commands = []
+        for tile_idx in missing_tiles:
+            new_st_idx = len(supertiles_data) + len(commands)
+            # A 1x1 supertile definition is a list containing one list with one tile index
+            new_st_definition = [[tile_idx]]
+            cmd = ModifyListCommand(
+                "Add 1x1 Supertile", 
+                supertiles_data, 
+                new_st_idx, 
+                new_st_definition, 
+                is_insert=True
+            )
+            commands.append(cmd)
+
+        # 5. Define UI update hooks to run after execution/undo
+        def post_op_hooks():
+            self._mark_project_modified()
+            self.clear_all_caches()
+            self.invalidate_minimap_background_cache()
+            self._update_editor_button_states()
+            self._update_supertile_info_label()
+            self.update_all_displays(changed_level="all")
+            self._request_tile_usage_refresh()
+            self._request_supertile_usage_refresh()
+
+        # 6. Execute as a single composite command
+        description = f"Add {len(missing_tiles)} missing 1x1 supertiles"
+        composite = CompositeCommand(
+            description, 
+            commands, 
+            app_ref=self, 
+            post_hooks=[post_op_hooks]
+        )
+        self.undo_manager.execute(composite)
+        
+        messagebox.showinfo("Operation Complete", f"Added {len(missing_tiles)} new supertiles.", parent=self.root)
+
+    def handle_delete_repeated_1x1_supertiles(self):
+        """
+        Operation 2: Finds supertiles pointing to the same tile, 
+        remaps the map to the first instance, and deletes duplicates.
+        """
+        global map_data, supertiles_data
+        if self.supertile_grid_width != 1 or self.supertile_grid_height != 1:
+            return
+
+        # 1. Identify duplicates and build remapping table
+        # tile_to_st_idx: maps Tile ID -> first Supertile Index that uses it
+        tile_to_st_idx = {}
+        # old_to_new_st_mapping: maps Old ST Index -> New ST Index after optimization
+        old_to_new_st_mapping = {}
+        optimized_supertiles = []
+        
+        duplicates_found_count = 0
+        
+        for old_idx, st_def in enumerate(supertiles_data):
+            tile_id = st_def[0][0]
+            if tile_id not in tile_to_st_idx:
+                # This is the first time we see this tile in an ST
+                new_idx = len(optimized_supertiles)
+                tile_to_st_idx[tile_id] = new_idx
+                old_to_new_st_mapping[old_idx] = new_idx
+                optimized_supertiles.append(copy.deepcopy(st_def))
+            else:
+                # This ST is a duplicate of an earlier one
+                old_to_new_st_mapping[old_idx] = tile_to_st_idx[tile_id]
+                duplicates_found_count += 1
+
+        if duplicates_found_count == 0:
+            messagebox.showinfo("Optimization", "No repeated 1x1 supertiles found.", parent=self.root)
+            return
+
+        # 2. Confirm with user
+        msg = (f"Found {duplicates_found_count} redundant supertile(s).\n\n"
+               f"This operation will:\n"
+               f"1. Remap all map cells to the first instance of each tile.\n"
+               f"2. Remove the {duplicates_found_count} duplicate supertile(s).\n\n"
+               f"This action is fully undoable. Proceed?")
+        if not messagebox.askokcancel("Confirm Delete Repeated", msg, icon="warning", parent=self.root):
+            return
+
+        # 3. Create the new Map Data structure using the mapping
+        new_map_data = copy.deepcopy(map_data)
+        for r in range(map_height):
+            for c in range(map_width):
+                old_val = map_data[r][c]
+                # Remap the supertile reference
+                new_map_data[r][c] = old_to_new_st_mapping.get(old_val, 0)
+
+        # 4. Prepare Commands
+        # Capture current state for Undo
+        old_map_snapshot = copy.deepcopy(map_data)
+        old_st_snapshot = copy.deepcopy(supertiles_data)
+        
+        def batch_setter(data_tuple):
+            global map_data, supertiles_data
+            map_data = data_tuple[0]
+            supertiles_data.clear()
+            supertiles_data.extend(data_tuple[1])
+
+        new_data_tuple = (new_map_data, optimized_supertiles)
+        old_data_tuple = (old_map_snapshot, old_st_snapshot)
+
+        # Update selections to ensure they remain within new bounds
+        global current_supertile_index, selected_supertile_for_map
+        old_selections = (current_supertile_index, selected_supertile_for_map)
+        
+        new_csi = old_to_new_st_mapping.get(current_supertile_index, 0)
+        new_ssm = old_to_new_st_mapping.get(selected_supertile_for_map, 0)
+        new_selections = (new_csi, new_ssm)
+
+        def selection_setter(sel_tuple):
+            global current_supertile_index, selected_supertile_for_map
+            current_supertile_index, selected_supertile_for_map = sel_tuple
+
+        # Create the Composite Command
+        data_cmd = SetDataCommand("Delete Repeated Supertiles", self, batch_setter, new_data_tuple, old_data_tuple)
+        sel_cmd = SetDataCommand("Update Selections", self, selection_setter, new_selections, old_selections)
+
+        def post_op_hooks():
+            self._mark_project_modified()
+            self.clear_all_caches()
+            self.invalidate_minimap_background_cache()
+            self._update_editor_button_states()
+            self._update_supertile_info_label()
+            self.update_all_displays(changed_level="all")
+            self._request_tile_usage_refresh()
+            self._request_supertile_usage_refresh()
+
+        composite = CompositeCommand(
+            f"Delete {duplicates_found_count} repeated 1x1 supertiles",
+            [data_cmd, sel_cmd],
+            app_ref=self,
+            post_hooks=[post_op_hooks]
+        )
+        
+        self.undo_manager.execute(composite)
+        messagebox.showinfo("Operation Complete", f"Removed {duplicates_found_count} supertiles.", parent=self.root)
+
+    def handle_sync_1x1_supertiles_order(self):
+        """
+        Operation 3: Sorts the supertileset based on the ID of the tile 
+        they contain. Remaps the map data to maintain visual consistency.
+        """
+        global map_data, supertiles_data
+        if self.supertile_grid_width != 1 or self.supertile_grid_height != 1:
+            return
+
+        # 1. Create a list of (original_index, tile_id) and sort it by tile_id
+        indexed_tiles = []
+        for idx, st_def in enumerate(supertiles_data):
+            tile_id = st_def[0][0]
+            indexed_tiles.append((idx, tile_id))
+
+        # Sort based on the tile_id (the second element of the tuple)
+        sorted_indices = sorted(indexed_tiles, key=lambda x: x[1])
+        
+        # Check if the order is already correct
+        is_already_sorted = all(sorted_indices[i][0] == i for i in range(len(sorted_indices)))
+        if is_already_sorted:
+            messagebox.showinfo("Sync Order", "Supertiles are already ordered by Tile ID.", parent=self.root)
+            return
+
+        # 2. Build the remapping table: Old Index -> New Index
+        old_to_new_mapping = {}
+        new_supertiles_data = []
+        for new_idx, (old_idx, _) in enumerate(sorted_indices):
+            old_to_new_mapping[old_idx] = new_idx
+            new_supertiles_data.append(copy.deepcopy(supertiles_data[old_idx]))
+
+        # 3. Apply the remapping to a copy of the Map Data
+        new_map_data = copy.deepcopy(map_data)
+        for r in range(map_height):
+            for c in range(map_width):
+                old_val = map_data[r][c]
+                new_map_data[r][c] = old_to_new_mapping.get(old_val, 0)
+
+        # 4. Prepare batch command
+        # Capture snapshots for Undo
+        old_map_snapshot = copy.deepcopy(map_data)
+        old_st_snapshot = copy.deepcopy(supertiles_data)
+        
+        def data_batch_setter(data_tuple):
+            global map_data, supertiles_data
+            map_data = data_tuple[0]
+            supertiles_data.clear()
+            supertiles_data.extend(data_tuple[1])
+
+        # Calculate new selection indices
+        global current_supertile_index, selected_supertile_for_map
+        old_selections = (current_supertile_index, selected_supertile_for_map)
+        new_csi = old_to_new_mapping.get(current_supertile_index, 0)
+        new_ssm = old_to_new_mapping.get(selected_supertile_for_map, 0)
+        new_selections = (new_csi, new_ssm)
+
+        def selection_setter(sel_tuple):
+            global current_supertile_index, selected_supertile_for_map
+            current_supertile_index, selected_supertile_for_map = sel_tuple
+
+        # Create Composite Command
+        data_cmd = SetDataCommand(
+            "Sync Supertile Order", 
+            self, 
+            data_batch_setter, 
+            (new_map_data, new_supertiles_data), 
+            (old_map_snapshot, old_st_snapshot)
+        )
+        sel_cmd = SetDataCommand("Update Selections", self, selection_setter, new_selections, old_selections)
+
+        def post_op_hooks():
+            self._mark_project_modified()
+            self.clear_all_caches()
+            self.invalidate_minimap_background_cache()
+            self.update_all_displays(changed_level="all")
+            self.scroll_selectors_to_supertile(current_supertile_index)
+            self._request_tile_usage_refresh()
+            self._request_supertile_usage_refresh()
+
+        composite = CompositeCommand(
+            "Sync 1x1 supertiles order",
+            [data_cmd, sel_cmd],
+            app_ref=self,
+            post_hooks=[post_op_hooks]
+        )
+
+        self.undo_manager.execute(composite)
+        messagebox.showinfo("Operation Complete", "Supertiles have been reordered by Tile ID.", parent=self.root)
 
 # print(dir(TileEditorApp))
 # exit() # Stop before GUI starts for this test
