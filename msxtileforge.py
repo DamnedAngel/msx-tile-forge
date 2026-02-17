@@ -4591,16 +4591,6 @@ class TileEditorApp:
         size_label.grid(row=0, column=0, padx=(0, 5), pady=2)
         self.map_size_label = ttk.Label(controls_frame, text=f"{map_width} x {map_height}")
         self.map_size_label.grid(row=0, column=1, padx=(0, 10), pady=2)
-        zoom_frame = ttk.Frame(controls_frame)
-        zoom_frame.grid(row=0, column=2, padx=(10, 0), pady=2)
-        zoom_out_button = ttk.Button(zoom_frame,text="-",width=2,command=lambda: self.change_map_zoom_mult(1 / 1.25))
-        zoom_out_button.pack(side=tk.LEFT)
-        self.map_zoom_label = ttk.Label(zoom_frame, text="100%", width=5, anchor=tk.CENTER)
-        self.map_zoom_label.pack(side=tk.LEFT, padx=2)
-        zoom_in_button = ttk.Button(zoom_frame,text="+",width=2,command=lambda: self.change_map_zoom_mult(1.25))
-        zoom_in_button.pack(side=tk.LEFT)
-        zoom_reset_button = ttk.Button(zoom_frame, text="Reset", width=5, command=lambda: self.set_map_zoom(1.0))
-        zoom_reset_button.pack(side=tk.LEFT, padx=(5, 0))
         self.map_coords_label = ttk.Label(controls_frame, text="ST Coords: -, -", width=15)
         self.map_coords_label.grid(row=0, column=3, padx=(10, 5), sticky="w")
 
@@ -5563,11 +5553,6 @@ class TileEditorApp:
 
         if self.map_paste_preview_rect_id:
             canvas.tag_raise(self.map_paste_preview_rect_id)
-
-
-        # --- 8. Update Zoom Label ---
-        if hasattr(self, 'map_zoom_label') and self.map_zoom_label.winfo_exists():
-            self.map_zoom_label.config(text=f"{int(self.map_zoom_level * 100)}%")
         
         _debug(" draw_map_canvas: End.")
 
@@ -6518,12 +6503,6 @@ class TileEditorApp:
         base_display_size = TILE_WIDTH # Assuming TILE_WIDTH is the unscaled pixel size (e.g., 8)
         current_int_display_tile_size = max(1, int(base_display_size * current_zoom_float))
         potential_new_int_display_tile_size = max(1, int(base_display_size * potential_new_zoom_float))
-
-        # Update the UI label and the DoubleVar (which moves the slider handle)
-        if hasattr(self, 'map_zoom_label') and self.map_zoom_label.winfo_exists():
-            try:
-                self.map_zoom_label.config(text=f"{int(potential_new_zoom_float * 100)}%")
-            except tk.TclError: pass
 
         # Update the DoubleVar to sync the Slider
         if abs(self.map_zoom_var.get() - potential_new_zoom_float) > 1e-4:
