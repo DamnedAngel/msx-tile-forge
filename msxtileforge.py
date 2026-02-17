@@ -8361,8 +8361,7 @@ class TileEditorApp:
     # --- Scrolling Methods ---
 
     def scroll_viewers_to_tile(self, tile_index):
-        """Scrolls the tileset viewers to make the specified tile index visible."""
-        # Basic input validation
+        """Scrolls the tileset viewers to make the specified tile index visible only if needed."""
         if tile_index < 0:
             return
 
@@ -8373,52 +8372,43 @@ class TileEditorApp:
         cell_size = size + (margin * 2)
         items_per_row = NUM_TILES_ACROSS
 
-        # Calculate target row and y-coordinate
+        # Calculate target row and bounds in content coordinates
         row, _ = divmod(tile_index, items_per_row)
-        target_y = row * cell_size
+        target_y_top = row * cell_size
+        target_y_bottom = target_y_top + cell_size
 
-        # --- Scroll main viewer ---
-        canvas_main = self.tileset_canvas
-        try:
-            # Get scroll region info (might be tuple or string)
-            scroll_info_tuple = canvas_main.cget("scrollregion")
-            # Convert to string and split for consistent parsing
-            scroll_info = str(scroll_info_tuple).split()
+        def smart_scroll(canvas):
+            if not canvas.winfo_exists() or not canvas.winfo_ismapped():
+                return
 
-            # Check if format is valid ("0 0 width height")
-            if len(scroll_info) == 4:
-                # Extract total height
-                total_height = float(scroll_info[3])
+            # Get current viewport in content coordinates
+            try:
+                view_y1 = canvas.canvasy(0)
+                view_y2 = canvas.canvasy(canvas.winfo_height())
+                
+                # Check if tile is already visible (with a 1px tolerance)
+                if target_y_top >= (view_y1 - 1) and target_y_bottom <= (view_y2 + 1):
+                    return # Already visible, do nothing
 
-                # Avoid division by zero
-                if total_height > 0:
-                    # Calculate scroll fraction
-                    fraction = target_y / total_height
-                    # Clamp fraction to valid range [0.0, 1.0]
-                    clamped_fraction = min(1.0, max(0.0, fraction))
-                    # Perform the scroll
-                    canvas_main.yview_moveto(clamped_fraction)
+                # If not visible, calculate the required scroll fraction
+                scroll_region = canvas.cget("scrollregion")
+                if scroll_region:
+                    total_height = float(str(scroll_region).split()[3])
+                    if total_height > 0:
+                        # If tile is above, scroll to top of tile. 
+                        # If tile is below, scroll to show tile at bottom.
+                        if target_y_top < view_y1:
+                            fraction = target_y_top / total_height
+                        else:
+                            fraction = (target_y_bottom - canvas.winfo_height()) / total_height
+                            
+                        canvas.yview_moveto(max(0.0, min(1.0, fraction)))
+            except (tk.TclError, IndexError, ValueError):
+                pass
 
-        except Exception as e:
-            # Catch any error during scrolling
-            _error(f"Error scrolling main tileset viewer: {e}")
-
-        # --- Scroll Supertile tab's viewer ---
-        canvas_st = self.st_tileset_canvas
-        try:
-            scroll_info_st_tuple = canvas_st.cget("scrollregion")
-            scroll_info_st = str(scroll_info_st_tuple).split()
-
-            if len(scroll_info_st) == 4:
-                total_height_st = float(scroll_info_st[3])
-
-                if total_height_st > 0:
-                    fraction_st = target_y / total_height_st
-                    clamped_fraction_st = min(1.0, max(0.0, fraction_st))
-                    canvas_st.yview_moveto(clamped_fraction_st)
-
-        except Exception as e:
-            _error(f"Error scrolling ST tileset viewer: {e}")
+        # Apply smart scroll to both possible tileset canvases
+        smart_scroll(self.tileset_canvas)
+        smart_scroll(self.st_tileset_canvas)
 
     def scroll_selectors_to_supertile(self, supertile_index):
         _debug(f"\n scroll_selectors_to_supertile: Attempting to ensure ST Index {supertile_index} is visible.")
