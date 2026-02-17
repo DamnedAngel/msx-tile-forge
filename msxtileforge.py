@@ -4044,8 +4044,6 @@ class TileEditorApp:
     def create_tile_editor_widgets(self, parent_frame):
         main_frame = ttk.Frame(parent_frame)
         main_frame.pack(expand=True, fill="both")
-
-        # Left Frame (Editor, Attributes, Transform)
         left_frame = ttk.Frame(main_frame)
         left_frame.grid(row=0, column=0, sticky=tk.N, padx=(0, 10))
 
@@ -4194,10 +4192,17 @@ class TileEditorApp:
         # Right Frame (Palette, Tileset Viewer, Buttons)
         right_frame = ttk.Frame(main_frame)
         right_frame.grid(row=0, column=1, sticky=(tk.N, tk.S, tk.W, tk.E)) 
+        main_frame.grid_rowconfigure(0, weight=1)
+        main_frame.grid_columnconfigure(1, weight=1)
 
+        # Vertical Layout Configuration for Right Side:
+        # Row 0: Palette (Fixed)
+        # Row 1: Tileset Viewer (Expands vertically)
+        # Row 2: Buttons (Fixed height at the bottom)
         right_frame.grid_columnconfigure(0, weight=1) 
+        right_frame.grid_rowconfigure(0, weight=0)
         right_frame.grid_rowconfigure(1, weight=1) # Tileset Viewer expands to fill vertical space
-        right_frame.grid_rowconfigure(3, weight=0) # Remove old spacer weight
+        right_frame.grid_rowconfigure(2, weight=0)
 
         palette_frame = ttk.LabelFrame(right_frame, text="Color Selector (Click to select color for FG/BG)")
         palette_frame.grid(row=0, column=0, pady=(0, 10), sticky="nw") 
@@ -4212,14 +4217,15 @@ class TileEditorApp:
         self.tile_editor_palette_canvas.bind("<Button-1>", self.handle_tile_editor_palette_click)
         self.tile_editor_palette_canvas.bind("<Double-Button-1>", self._on_canvas_double_click)
 
+        # Frame set to "nsew" to fill the column and negotiate width updates correctly
         viewer_frame = ttk.LabelFrame(right_frame, text="Tileset")
-        viewer_frame.grid(row=1, column=0, pady=(0, 10), sticky="nse")
+        viewer_frame.grid(row=1, column=0, pady=(0, 10), sticky="new")
         self.tile_editor_tileset_paned = None
 
         viewer_hbar = ttk.Scrollbar(viewer_frame, orient=tk.HORIZONTAL)
         viewer_vbar = ttk.Scrollbar(viewer_frame, orient=tk.VERTICAL)
 
-        # Removed 'width' and 'height' from Canvas to let redraw logic handle sizing.
+        # Canvas set to "nsw" to keep tiles justified to the left
         self.tileset_canvas = tk.Canvas(
             viewer_frame, bg="lightgrey", highlightthickness=0,
             xscrollcommand=viewer_hbar.set,
@@ -4229,7 +4235,7 @@ class TileEditorApp:
         viewer_hbar.config(command=self.tileset_canvas.xview)
         viewer_vbar.config(command=self.tileset_canvas.yview)
 
-        self.tileset_canvas.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.W, tk.E))
+        self.tileset_canvas.grid(row=0, column=0, sticky=(tk.N, tk.W))
         viewer_vbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         viewer_hbar.grid(row=1, column=0, sticky=(tk.W, tk.E))
         viewer_frame.grid_rowconfigure(0, weight=1)
@@ -4272,11 +4278,8 @@ class TileEditorApp:
 
         self._create_zoom_bar(viewer_frame, self.tileset_canvas, self.tile_selector_zoom_var, 1.0, 6.0)
 
-        _debug(f" HERE 1")
         self.tile_editor_main_frame = main_frame # Store the tab's container
-        _debug(f" HERE 2")
         self.tile_editor_left_frame = left_frame # Store the left panel reference
-        _debug(f" HERE 3")
 
 
     def create_supertile_editor_widgets(self, parent_frame):
@@ -4284,6 +4287,10 @@ class TileEditorApp:
         main_frame.pack(expand=True, fill="both")
         left_frame = ttk.Frame(main_frame)
         left_frame.grid(row=0, column=0, sticky=tk.N, padx=(0, 10)) 
+
+        # Storing boundary references for zoom width calculations
+        self.supertile_editor_main_frame = main_frame
+        self.supertile_editor_left_frame = left_frame
 
         def_frame = ttk.LabelFrame(
             left_frame, text="Supertile Definition (Click to place selected tile)"
@@ -4445,19 +4452,19 @@ class TileEditorApp:
         main_frame.grid_columnconfigure(1, weight=1)
         main_frame.grid_rowconfigure(0, weight=1)
         
-        # Create a PanedWindow to allow horizontal resizing of the Tileset Viewer in the ST Tab.
-        st_tileset_paned = ttk.PanedWindow(right_frame, orient=tk.HORIZONTAL)
-        st_tileset_paned.pack(side=tk.TOP, fill=tk.X, expand=False, pady=(0, 10), anchor="nw")
-        self.supertile_editor_tileset_paned = st_tileset_paned
-        st_tileset_paned.bind("<ButtonRelease-1>", self._capture_sash_position)
+        # Vertical Layout Configuration for Right Side:
+        # Row 0: Tileset (Fixed height)
+        # Row 1: Supertile Selector (Expands vertically)
+        # Row 2: Buttons (Fixed height at the bottom)
+        right_frame.grid_columnconfigure(0, weight=1)
+        right_frame.grid_rowconfigure(0, weight=0) 
+        right_frame.grid_rowconfigure(1, weight=1)
+        right_frame.grid_rowconfigure(2, weight=0)
 
-        tileset_viewer_frame = ttk.LabelFrame(st_tileset_paned, text="Tileset (Click to select tile to draw supertile)")
-        st_tileset_paned.add(tileset_viewer_frame, weight=0)
-        
-        inert_panel_st_tile = ttk.Frame(st_tileset_paned)
-        st_tileset_paned.add(inert_panel_st_tile, weight=1)
+        tileset_viewer_frame = ttk.LabelFrame(right_frame, text="Tileset")
+        tileset_viewer_frame.grid(row=0, column=0, pady=(0, 10), sticky="nsew")
+        self.supertile_editor_tileset_paned = None 
 
-        # Define scrollbars FIRST
         st_viewer_hbar = ttk.Scrollbar(tileset_viewer_frame, orient=tk.HORIZONTAL)
         st_viewer_vbar = ttk.Scrollbar(tileset_viewer_frame, orient=tk.VERTICAL)
 
@@ -4470,8 +4477,7 @@ class TileEditorApp:
         st_viewer_hbar.config(command=self.st_tileset_canvas.xview)
         st_viewer_vbar.config(command=self.st_tileset_canvas.yview)
 
-
-        self.st_tileset_canvas.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.W, tk.E))
+        self.st_tileset_canvas.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.W))
         st_viewer_vbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         st_viewer_hbar.grid(row=1, column=0, sticky=(tk.W, tk.E))
         tileset_viewer_frame.grid_rowconfigure(0, weight=1)
@@ -4487,11 +4493,12 @@ class TileEditorApp:
         self.st_tileset_canvas.bind("<Button-4>", self._on_mousewheel_scroll, add="+")
         self.st_tileset_canvas.bind("<Button-5>", self._on_mousewheel_scroll, add="+")
 
+        # Bottom Frame positioned at Row 2 using grid instead of pack
         bottom_controls_frame = ttk.Frame(right_frame)
-        bottom_controls_frame.pack(side=tk.BOTTOM, fill=tk.X, expand=False, pady=(5, 0))
+        bottom_controls_frame.grid(row=2, column=0, sticky="ew", pady=(5, 0))
 
         st_editor_paned_window = ttk.PanedWindow(right_frame, orient=tk.HORIZONTAL)
-        st_editor_paned_window.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        st_editor_paned_window.grid(row=1, column=0, sticky="nsew")
         self.st_editor_paned_window = st_editor_paned_window
         st_editor_paned_window.bind("<ButtonRelease-1>", self._capture_sash_position)
 
@@ -18070,36 +18077,45 @@ class TileEditorApp:
 
     def _perform_tile_zoom_redraw(self):
         """Clears caches and redraws tile viewers, strictly clamping height to the window's bottom."""
+
         self._tile_zoom_timer = None
         self.tile_image_cache.clear()
+
+        zoom = self.tile_selector_zoom_var.get()
+        margin = self.selector_margin
+        size = int(VIEWER_TILE_SIZE * zoom)
+        cell_size = size + (margin * 2)
+        ideal_width = (NUM_TILES_ACROSS * cell_size)
+        tile_editor_width = self.tile_editor_main_frame.winfo_width()
+        supertile_editor_width = self.supertile_editor_main_frame.winfo_width()
+        main_frame_width = max(tile_editor_width, supertile_editor_width)
+
+        _debug(f" _perform_tile_zoom_redraw: ideal width is {ideal_width}.")
+        _debug(f" _perform_tile_zoom_redraw: tile editor width width is {tile_editor_width}.")
+        _debug(f" _perform_tile_zoom_redraw: supertile editor width is {supertile_editor_width}.")
+        _debug(f" _perform_tile_zoom_redraw: main frame width set to  {main_frame_width}.")
+        
+        # Force Tkinter to process pending geometry changes so we get real pixel values
+        self.root.update_idletasks()
         
         if hasattr(self, 'tileset_canvas') and self.tileset_canvas.winfo_exists():
-            # Force Tkinter to process pending geometry changes so we get real pixel values
-            self.root.update_idletasks()
+            _debug(f" _perform_tile_zoom_redraw: has attribute 'tileset_canvas'.")
             
-            zoom = self.tile_selector_zoom_var.get()
-            margin = self.selector_margin
-            size = int(VIEWER_TILE_SIZE * zoom)
-            cell_size = size + (margin * 2)
-            
-            # 0. Calculate ideal width for 16 columns and constrain it by the parent frame's width
-            ideal_width = (NUM_TILES_ACROSS * cell_size)
-
             try:
                 # Get the available width
-                max_allowed_width = self.tile_editor_main_frame.winfo_width() - self.tile_editor_left_frame.winfo_width() - 20
-                _debug(f" _perform_tile_zoom_redraw: main_frame width is {self.tile_editor_main_frame.winfo_width()}.")
-                _debug(f" _perform_tile_zoom_redraw: left_frame width is {self.tile_editor_left_frame.winfo_width()}.")
-                _debug(f" _perform_tile_zoom_redraw: max_allowed_width is {max_allowed_width}.")
+                te_left_frame = self.tile_editor_left_frame.winfo_width()
+                max_allowed_width = main_frame_width - te_left_frame - 30
+                _debug(f" _perform_tile_zoom_redraw: [tile] left_frame width is {te_left_frame}.")
+                _debug(f" _perform_tile_zoom_redraw: [tile] max_allowed_width is {max_allowed_width}.")
                 
                 # If the ideal width exceeds the available window space, cap it 
-                target_width = max (min(ideal_width, max_allowed_width), 50)
+                target_width = max (min(ideal_width, max_allowed_width), 150)
                 
                 # Apply the width. Because of the anchor setting, this will grow/shrink the selector.
-                _debug(f" _perform_tile_zoom_redraw: trying to apply target width of {target_width}.")
+                _debug(f" _perform_tile_zoom_redraw: [tile] trying to apply target width of {target_width}.")
                 self.tileset_canvas.config(width=target_width)
             except (AttributeError, tk.TclError):
-                _debug(f" _perform_tile_zoom_redraw/except: trying to apply ideal width of {ideal_width}.")
+                _debug(f" _perform_tile_zoom_redraw/except: [tile] trying to apply ideal width of {ideal_width}.")
                 self.tileset_canvas.config(width=ideal_width)
 
             # 1. Total height the grid would take if unconstrained
@@ -18139,6 +18155,25 @@ class TileEditorApp:
             self.draw_tileset_viewer(self.tileset_canvas, current_tile_index)
 
         if hasattr(self, 'st_tileset_canvas') and self.st_tileset_canvas.winfo_exists():
+            _debug(f" _perform_tile_zoom_redraw: has attribute 'st_tileset_canvas'.")
+            
+            try:
+                # Get the available width
+                ste_left_frame = self.supertile_editor_left_frame.winfo_width()
+                max_allowed_width_st = main_frame_width - ste_left_frame - 30
+                _debug(f" _perform_tile_zoom_redraw: [st] left_frame width is {ste_left_frame}.")
+                _debug(f" _perform_tile_zoom_redraw: [st] max_allowed_width is {max_allowed_width_st}.")
+                
+                # Cap the width at the window border (minimum 50px)
+                target_width_st = max(min(ideal_width, max_allowed_width_st), 150)
+                
+                # Apply the width. Because of the anchor setting, this will grow/shrink the selector.
+                _debug(f" _perform_tile_zoom_redraw: [st] trying to apply target width of {target_width_st}.")
+                self.st_tileset_canvas.config(width=target_width_st)
+            except (AttributeError, tk.TclError):
+                _debug(f" _perform_tile_zoom_redraw/except: [st] trying to apply ideal width of {ideal_width}.")
+                self.st_tileset_canvas.config(width=ideal_width)
+
             self.draw_tileset_viewer(self.st_tileset_canvas, selected_tile_for_supertile)
             
         self.scroll_viewers_to_tile(current_tile_index)
