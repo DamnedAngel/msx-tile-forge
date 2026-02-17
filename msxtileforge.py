@@ -2580,8 +2580,14 @@ class ExportDialog(tk.Toplevel):
         
         self.output_dir_var = tk.StringVar()
         self.basename_var = tk.StringVar()
-        self.gen_asm_var = tk.BooleanVar(value=True)
-        self.gen_c_header_var = tk.BooleanVar(value=True)
+
+        # Initialize dictionary of BooleanVars from parent_app's persistent settings
+        self.vars = {}
+        for key, val in self.parent_app.export_settings.items():
+            self.vars[key] = tk.BooleanVar(value=val)
+        
+        # Track widgets for conditional disabling
+        self.check_widgets = {}
 
         if self.project_path:
             self.output_dir_var.set(os.path.dirname(self.project_path))
@@ -2604,13 +2610,59 @@ class ExportDialog(tk.Toplevel):
         base_entry = ttk.Entry(base_frame, textvariable=self.basename_var, width=60)
         base_entry.pack(fill="x", expand=True, padx=5, pady=5)
 
-        # Options
-        options_frame = ttk.LabelFrame(main_frame, text="Generate Include Files")
-        options_frame.pack(fill="x", padx=5, pady=5)
-        asm_check = ttk.Checkbutton(options_frame, text="Assembly Include File (.s)", variable=self.gen_asm_var)
-        asm_check.pack(anchor="w", padx=10, pady=2)
-        c_check = ttk.Checkbutton(options_frame, text="C Header Files (.h)", variable=self.gen_c_header_var)
-        c_check.pack(anchor="w", padx=10, pady=2)
+        # Export Options Matrix
+        options_frame = ttk.LabelFrame(main_frame, text="Export Channels", padding=10)
+        options_frame.pack(fill="x", padx=5, pady=10)
+        
+        # Configure columns: Col 0 for labels, 1-3 for checkboxes (forced equal width)
+        options_frame.columnconfigure(0, weight=1)
+        options_frame.columnconfigure((1, 2, 3), weight=1, uniform="export_cols")
+
+        # get default font properties
+        default_f = font.nametofont("TkDefaultFont")
+        family = default_f.actual("family")
+        size = default_f.actual("size")
+
+        # Headers
+        ttk.Label(options_frame, text="").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        ttk.Label(options_frame, text="Raw Binaries", font=(family, size, "bold")).grid(row=0, column=1, padx=5, pady=5)
+        ttk.Label(options_frame, text="C Headers", font=(family, size, "bold")).grid(row=0, column=2, padx=5, pady=5)
+        ttk.Label(options_frame, text="ASM Includes", font=(family, size, "bold")).grid(row=0, column=3, padx=5, pady=5)
+
+        # Master Toggles Row
+        ttk.Label(options_frame, text="Enable Output", font=(family, size, "bold")).grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        
+        # We wrap master checkboxes in frames to ensure they center correctly in the uniform columns
+        for col, key in enumerate(["master_bin", "master_c", "master_asm"], start=1):
+            f = ttk.Frame(options_frame)
+            f.grid(row=1, column=col, sticky="nsew")
+            chk = ttk.Checkbutton(f, variable=self.vars[key], command=self._update_ui_state)
+            chk.pack(expand=True)
+
+        sep = ttk.Separator(options_frame, orient='horizontal')
+        sep.grid(row=2, column=0, columnspan=4, sticky="ew", pady=10)
+
+        # Component rows
+        components = [
+            ("Palette", "pal"),
+            ("Tileset", "tiles"),
+            ("Supertiles", "super"),
+            ("Map", "map")
+        ]
+        
+        for i, (label, key_suffix) in enumerate(components):
+            row_idx = i + 3
+            ttk.Label(options_frame, text=label).grid(row=row_idx, column=0, padx=5, pady=3, sticky="w")
+            
+            # Create a checkbox for each format in this component's row
+            for col, prefix in enumerate(["bin", "c", "asm"], start=1):
+                f = ttk.Frame(options_frame)
+                f.grid(row=row_idx, column=col, sticky="nsew")
+                
+                key = f"{prefix}_{key_suffix}"
+                chk = ttk.Checkbutton(f, variable=self.vars[key], command=self._update_ui_state)
+                chk.pack(expand=True)
+                self.check_widgets[key] = chk
         
         # Buttons
         button_frame = ttk.Frame(main_frame)
@@ -2622,8 +2674,38 @@ class ExportDialog(tk.Toplevel):
         self.export_button.pack(side=tk.LEFT, padx=5)
         self.cancel_button.pack(side=tk.LEFT, padx=5)
         
+        # Initial state update to apply graying-out of sub-options
+        self._update_ui_state()
+
         self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.center_window()
+
+    def _update_ui_state(self):
+        """
+        Updates the enabled/disabled state of component checkboxes based on 
+        the master toggles, and manages the main Export button state.
+        """
+        # 1. Update component widget states based on master toggles
+        masters = {
+            "master_bin": ["bin_pal", "bin_tiles", "bin_super", "bin_map"],
+            "master_c": ["c_pal", "c_tiles", "c_super", "c_map"],
+            "master_asm": ["asm_pal", "asm_tiles", "asm_super", "asm_map"]
+        }
+
+        for master_key, components in masters.items():
+            state = tk.NORMAL if self.vars[master_key].get() else tk.DISABLED
+            for comp_key in components:
+                self.check_widgets[comp_key].config(state=state)
+
+        # 2. Determine if the Export button should be enabled
+        # The export button is only valid if at least one master format is checked
+        at_least_one_active = (
+            self.vars["master_bin"].get() or 
+            self.vars["master_c"].get() or 
+            self.vars["master_asm"].get()
+        )
+        
+        self.export_button.config(state=tk.NORMAL if at_least_one_active else tk.DISABLED)
 
     def center_window(self):
         self.update_idletasks()
@@ -2645,7 +2727,12 @@ class ExportDialog(tk.Toplevel):
             messagebox.showerror("Input Error", "Output directory and basename cannot be empty.", parent=self)
             return
 
-        # Use the unified helper to get the script path, fixing the pathing bug.
+        # 1. Persist current dialog settings back to the parent application
+        for key, var_obj in self.vars.items():
+            self.parent_app.export_settings[key] = var_obj.get()
+        self.parent_app._save_app_settings()
+
+        # 2. Locate the exporter script
         cli_script = self.parent_app._get_script_path("msxtileexport.py")
         
         if not os.path.exists(cli_script):
@@ -2654,17 +2741,59 @@ class ExportDialog(tk.Toplevel):
 
         source_file = self.project_path + ".SC4Map"
 
+        # 3. Construct the base command
         command = [
             cli_script,
             source_file,
             "--output-dir", output_dir,
             "--output-basename", basename
         ]
-        if self.gen_asm_var.get():
-            command.append("--asm")
-        if self.gen_c_header_var.get():
+
+        # 4. Handle Raw Binary logic (Default ON, uses exclusion flags)
+        if not self.vars["master_bin"].get():
+            # If Master Binary is OFF, exclude everything
+            command.append("--nopal")
+            command.append("--notiles")
+            command.append("--nosuper")
+            command.append("--nomap")
+        else:
+            # If Master Binary is ON, add flags for individual components that are UNCHECKED
+            if not self.vars["bin_pal"].get():
+                command.append("--nopal")
+            if not self.vars["bin_tiles"].get():
+                command.append("--notiles")
+            if not self.vars["bin_super"].get():
+                command.append("--nosuper")
+            if not self.vars["bin_map"].get():
+                command.append("--nomap")
+
+        # 5. Handle C Header logic (Requires --c-header, uses exclusion flags)
+        if self.vars["master_c"].get():
             command.append("--c-header")
+            # Exclude individual C components that are UNCHECKED
+            if not self.vars["c_pal"].get():
+                command.append("--c-nopal")
+            if not self.vars["c_tiles"].get():
+                command.append("--c-notiles")
+            if not self.vars["c_super"].get():
+                command.append("--c-nosuper")
+            if not self.vars["c_map"].get():
+                command.append("--c-nomap")
+
+        # 6. Handle ASM Include logic (Requires --asm, uses exclusion flags)
+        if self.vars["master_asm"].get():
+            command.append("--asm")
+            # Exclude individual ASM components that are UNCHECKED
+            if not self.vars["asm_pal"].get():
+                command.append("--asm-nopal")
+            if not self.vars["asm_tiles"].get():
+                command.append("--asm-notiles")
+            if not self.vars["asm_super"].get():
+                command.append("--asm-nosuper")
+            if not self.vars["asm_map"].get():
+                command.append("--asm-nomap")
         
+        _debug(f" start_export: Running command: {command}.")
         # Instantiate and run the unified script runner dialog.
         ScriptRunnerDialog(
             parent=self.parent_app.root, # Make it modal to the main app window
@@ -3128,6 +3257,9 @@ class TileEditorApp:
         self.color_usage_window = None
         self.tile_usage_window = None
         self.supertile_usage_window = None 
+
+        # --- Export settings ---
+        self._reset_export_settings()
 
         # --- Load settings, which will be used later ---
         self._load_app_settings()
@@ -6477,6 +6609,9 @@ class TileEditorApp:
         global map_data, map_width, map_height, selected_supertile_for_map, last_painted_map_cell
         global selected_color_index
 
+        # Reset export toggles to default for the new project
+        self._reset_export_settings()
+
         new_dim_w = DEFAULT_SUPERTILE_GRID_WIDTH
         new_dim_h = DEFAULT_SUPERTILE_GRID_HEIGHT
 
@@ -7552,6 +7687,10 @@ class TileEditorApp:
         if not filepath:
             _error("open_project: Called with no filepath. Returning False.")
             return False
+
+        # Reset export toggles to default if this is a manual open (not startup auto-load)
+        if not is_auto_load:
+            self._reset_export_settings()
 
         directory = os.path.dirname(filepath)
         base_name, _ = os.path.splitext(os.path.basename(filepath))
@@ -14197,6 +14336,12 @@ class TileEditorApp:
                     if isinstance(loaded_data, dict):
                         # Load all other settings directly
                         self.app_settings.update(loaded_data)
+
+
+                        # Load persisted export toggles if they exist
+                        if "export_settings" in loaded_data:
+                            self.export_settings.update(loaded_data["export_settings"])
+
                         _debug(" _load_app_settings: Settings loaded from file.")
                     else:
                         _error(f"_load_app_settings: Config file did not contain a valid JSON object. Using defaults.")
@@ -14249,6 +14394,9 @@ class TileEditorApp:
             # We will handle its saving via its configure/release bindings.
 
             self.app_settings['last_opened_project'] = self.current_project_base_path
+
+            # Persist granular export toggles
+            self.app_settings['export_settings'] = self.export_settings
             
             all_known_window_types = ["ColorUsageWindow", "TileUsageWindow", "SupertileUsageWindow"]
             for window_name in all_known_window_types:
@@ -17841,6 +17989,32 @@ class TileEditorApp:
 
         self.undo_manager.execute(composite)
         messagebox.showinfo("Operation Complete", "Supertiles have been reordered by Tile ID.", parent=self.root)
+
+    def _reset_export_settings(self):
+        """
+        Resets all granular and master export toggles to their 
+        default 'all enabled' state.
+        """
+        self.export_settings = {
+            "master_bin": True,
+            "master_c": True,
+            "master_asm": True,
+            "bin_pal": True,
+            "bin_tiles": True,
+            "bin_super": True,
+            "bin_map": True,
+            "c_pal": True,
+            "c_tiles": True,
+            "c_super": True,
+            "c_map": True,
+            "asm_pal": True,
+            "asm_tiles": True,
+            "asm_super": True,
+            "asm_map": True
+        }
+        _debug("Export settings reset to defaults.")
+
+
 
 # print(dir(TileEditorApp))
 # exit() # Stop before GUI starts for this test
