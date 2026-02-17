@@ -4212,8 +4212,8 @@ class TileEditorApp:
         self.tile_editor_palette_canvas.bind("<Button-1>", self.handle_tile_editor_palette_click)
         self.tile_editor_palette_canvas.bind("<Double-Button-1>", self._on_canvas_double_click)
 
-        viewer_frame = ttk.LabelFrame(right_frame, text="Tileset (Click to select for edition)")
-        viewer_frame.grid(row=1, column=0, pady=(0, 10), sticky="nsew")
+        viewer_frame = ttk.LabelFrame(right_frame, text="Tileset")
+        viewer_frame.grid(row=1, column=0, pady=(0, 10), sticky="nse")
         self.tile_editor_tileset_paned = None
 
         viewer_hbar = ttk.Scrollbar(viewer_frame, orient=tk.HORIZONTAL)
@@ -4271,6 +4271,13 @@ class TileEditorApp:
         self.delete_tile_button.grid(row=1, column=1, padx=3, pady=(5, 0))
 
         self._create_zoom_bar(viewer_frame, self.tileset_canvas, self.tile_selector_zoom_var, 1.0, 6.0)
+
+        _debug(f" HERE 1")
+        self.tile_editor_main_frame = main_frame # Store the tab's container
+        _debug(f" HERE 2")
+        self.tile_editor_left_frame = left_frame # Store the left panel reference
+        _debug(f" HERE 3")
+
 
     def create_supertile_editor_widgets(self, parent_frame):
         main_frame = ttk.Frame(parent_frame)
@@ -5070,29 +5077,18 @@ class TileEditorApp:
             cell_size = size + (margin * 2)
             cols = NUM_TILES_ACROSS
             
+            # Calculate content dimensions for scroll region (unconstrained zoomed size)
+            max_rows = math.ceil(len(tileset_patterns) / cols)
+            canvas_width = max(1, cols * cell_size)
+            canvas_height = max(1, max_rows * cell_size)
+
             # Lock the layout values onto the canvas for the click logic to use
             canvas.locked_cols = cols
             canvas.locked_cell_size = cell_size
             canvas.locked_margin = margin
-            
-            max_rows = math.ceil(len(tileset_patterns) / cols)
-            canvas_height = max(1, max_rows * cell_size)
-            canvas_width = max(1, cols * cell_size)
 
-            str_scroll = f"0 0 {float(canvas_width)} {float(canvas_height)}"
-
-            current_scroll = ""
-            try:
-                current_scroll_val = canvas.cget("scrollregion")
-                if isinstance(current_scroll_val, tuple):
-                    current_scroll = " ".join(map(str, current_scroll_val))
-                else:
-                    current_scroll = str(current_scroll_val)
-            except tk.TclError:
-                pass
-
-            if current_scroll != str_scroll:
-                canvas.config(scrollregion=(0, 0, canvas_width, canvas_height))
+            # Apply the full content size to the scrollregion to enable scrollbars
+            canvas.config(scrollregion=(0, 0, canvas_width, canvas_height))
 
             for i in range(len(tileset_patterns)):
                 tile_r, tile_c = divmod(i, NUM_TILES_ACROSS)
@@ -18086,10 +18082,25 @@ class TileEditorApp:
             size = int(VIEWER_TILE_SIZE * zoom)
             cell_size = size + (margin * 2)
             
-            # 0. Calculate and apply the required width for 16 columns
-            cols = NUM_TILES_ACROSS
-            target_width = (cols * cell_size)
-            self.tileset_canvas.config(width=target_width)
+            # 0. Calculate ideal width for 16 columns and constrain it by the parent frame's width
+            ideal_width = (NUM_TILES_ACROSS * cell_size)
+
+            try:
+                # Get the available width
+                max_allowed_width = self.tile_editor_main_frame.winfo_width() - self.tile_editor_left_frame.winfo_width() - 20
+                _debug(f" _perform_tile_zoom_redraw: main_frame width is {self.tile_editor_main_frame.winfo_width()}.")
+                _debug(f" _perform_tile_zoom_redraw: left_frame width is {self.tile_editor_left_frame.winfo_width()}.")
+                _debug(f" _perform_tile_zoom_redraw: max_allowed_width is {max_allowed_width}.")
+                
+                # If the ideal width exceeds the available window space, cap it 
+                target_width = max (min(ideal_width, max_allowed_width), 50)
+                
+                # Apply the width. Because of the anchor setting, this will grow/shrink the selector.
+                _debug(f" _perform_tile_zoom_redraw: trying to apply target width of {target_width}.")
+                self.tileset_canvas.config(width=target_width)
+            except (AttributeError, tk.TclError):
+                _debug(f" _perform_tile_zoom_redraw/except: trying to apply ideal width of {ideal_width}.")
+                self.tileset_canvas.config(width=ideal_width)
 
             # 1. Total height the grid would take if unconstrained
             num_rows = math.ceil(len(tileset_patterns) / NUM_TILES_ACROSS)
