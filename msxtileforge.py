@@ -3153,8 +3153,21 @@ class TileEditorApp:
         self.config_file_name = "settings.json"
         self.app_settings = {}
         
-        self.tile_selector_zoom = 1.0
-        self.st_selector_zoom = 1.0
+        # Use DoubleVar for bi-directional binding with Sliders and MouseWheel
+        self.tile_selector_zoom_var = tk.DoubleVar(value=1.0)
+        self.st_selector_zoom_var = tk.DoubleVar(value=1.0)
+        self.map_zoom_var = tk.DoubleVar(value=1.0)
+        
+        # Set up traces to trigger redrawing and cache clearing
+        self.tile_selector_zoom_var.trace_add("write", self._on_tile_zoom_var_change)
+        self.st_selector_zoom_var.trace_add("write", self._on_st_zoom_var_change)
+        self.map_zoom_var.trace_add("write", self._on_map_zoom_var_change)
+        
+        # Throttling timers for smooth slider performance
+        self._tile_zoom_timer = None
+        self._st_zoom_timer = None
+        self._map_zoom_timer = None
+
         self.selector_margin = 1
 
         self.active_msx_palette = []
@@ -4195,16 +4208,16 @@ class TileEditorApp:
         )
         self.tile_editor_palette_canvas.bind("<Double-Button-1>", self._on_canvas_double_click)
 
-        viewer_frame = ttk.LabelFrame(right_frame, text="Tileset (Click to select for edition)")
+        viewer_frame = ttk.LabelFrame(right_frame, text="Tileset Selector")
         viewer_frame.grid(row=1, column=0, pady=(0,10), sticky="nw") # Use "nw" anchor
-        
+
         right_frame.grid_rowconfigure(0, weight=0) 
         right_frame.grid_rowconfigure(1, weight=0) 
         right_frame.grid_rowconfigure(2, weight=0)
 
         margin = self.selector_margin
         num_rows_fixed = 16
-        cell_size = int(VIEWER_TILE_SIZE * self.tile_selector_zoom) + (margin * 2)
+        cell_size = int(VIEWER_TILE_SIZE * self.tile_selector_zoom_var.get()) + (margin * 2)
         fixed_viewer_width = NUM_TILES_ACROSS * cell_size
         fixed_viewer_height = num_rows_fixed * cell_size
         
@@ -4261,6 +4274,8 @@ class TileEditorApp:
 
         self.delete_tile_button = ttk.Button(tile_button_frame, text="Delete", command=self.handle_delete_tile)
         self.delete_tile_button.grid(row=1, column=1, padx=3, pady=(5, 0))
+
+        self._create_zoom_bar(viewer_frame, self.tileset_canvas, self.tile_selector_zoom_var, 1.0, 6.0)
 
     def create_supertile_editor_widgets(self, parent_frame):
         main_frame = ttk.Frame(parent_frame)
@@ -4428,15 +4443,13 @@ class TileEditorApp:
         main_frame.grid_columnconfigure(1, weight=1)
         main_frame.grid_rowconfigure(0, weight=1)
         
-        tileset_viewer_frame = ttk.LabelFrame(
-            right_frame, text="Tileset (Click to select tile to draw supertile)"
-        )
+        tileset_viewer_frame = ttk.LabelFrame(right_frame, text="Tileset Selector")
         # Use pack with anchor="nw" to align left and prevent horizontal/vertical expansion.
         tileset_viewer_frame.pack(side=tk.TOP, expand=False, pady=(0, 10), anchor="nw")
 
         margin = self.selector_margin
         num_rows_fixed = 16
-        cell_size = int(VIEWER_TILE_SIZE * self.tile_selector_zoom) + (margin * 2)
+        cell_size = int(VIEWER_TILE_SIZE * self.tile_selector_zoom_var.get()) + (margin * 2)
         fixed_viewer_width = NUM_TILES_ACROSS * cell_size
         fixed_viewer_height = num_rows_fixed * cell_size
         
@@ -4479,7 +4492,7 @@ class TileEditorApp:
         st_editor_paned_window.bind("<ButtonRelease-1>", self._capture_sash_position)
 
         st_selector_frame = ttk.LabelFrame(
-            st_editor_paned_window, text="Supertile Selector (Click to select for edition)",
+            st_editor_paned_window, text="Supertile Selector",
             name="st_editor_selector_frame"
         )
         st_editor_paned_window.add(st_selector_frame, weight=0)
@@ -4546,6 +4559,12 @@ class TileEditorApp:
 
         self.delete_supertile_button = ttk.Button(bottom_controls_frame, text="Delete", command=self.handle_delete_supertile)
         self.delete_supertile_button.grid(row=1, column=1, padx=3, pady=(5, 0))
+
+        # Zoom Bar for the Tileset viewer in this tab
+        self._create_zoom_bar(tileset_viewer_frame, self.st_tileset_canvas, self.tile_selector_zoom_var, 1.0, 6.0)
+        
+        # Zoom Bar for the Supertile selector in this tab
+        self._create_zoom_bar(st_selector_frame, self.supertile_selector_canvas, self.st_selector_zoom_var, 0.5, 6.0)
 
     def create_map_editor_widgets(self, parent_frame):
         main_frame = ttk.Frame(parent_frame)
@@ -4654,7 +4673,7 @@ class TileEditorApp:
 
         palette_area_frame.grid_rowconfigure(0, weight=1)
         palette_area_frame.grid_columnconfigure(0, weight=1)
-        st_selector_frame = ttk.LabelFrame(palette_area_frame, text="Supertile Palette (Click to select supertile to draw map)")
+        st_selector_frame = ttk.LabelFrame(palette_area_frame, text="Supertile Selector")
         st_selector_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.W, tk.E))
         st_selector_frame.grid_rowconfigure(0, weight=1)
         st_selector_frame.grid_columnconfigure(0, weight=1)
@@ -4695,6 +4714,12 @@ class TileEditorApp:
         self.map_editor_palette_pane_container.bind("<Configure>", self._on_resizable_selector_pane_configure)
         
         self.map_paned_window.bind("<ButtonRelease-1>", self._capture_sash_position)
+
+        # Zoom Bar for the Map canvas
+        self._create_zoom_bar(map_canvas_frame, self.map_canvas, self.map_zoom_var, 0.2, 6.0)
+
+        # Zoom bar for the Supertile selector
+        self._create_zoom_bar(st_selector_frame, self.map_supertile_selector_canvas, self.st_selector_zoom_var, 0.5, 6.0)
 
     # --- Use this as the SINGLE definition for setting up bindings ---
     def _setup_map_canvas_bindings(self):
@@ -5059,7 +5084,7 @@ class TileEditorApp:
         try:
             canvas.delete("all")
 
-            zoom = self.tile_selector_zoom
+            zoom = self.tile_selector_zoom_var.get()
             margin = self.selector_margin
             size = int(VIEWER_TILE_SIZE * zoom)
             cell_size = size + (margin * 2)
@@ -5194,7 +5219,7 @@ class TileEditorApp:
                 return
             canvas.delete("all") # Clear previous items
             
-            zoom = self.st_selector_zoom
+            zoom = self.st_selector_zoom_var.get()
             margin = self.selector_margin
             item_pixel_w = int((self.supertile_grid_width * TILE_WIDTH) * zoom)
             item_pixel_h = int((self.supertile_grid_height * TILE_HEIGHT) * zoom)
@@ -6494,11 +6519,15 @@ class TileEditorApp:
         current_int_display_tile_size = max(1, int(base_display_size * current_zoom_float))
         potential_new_int_display_tile_size = max(1, int(base_display_size * potential_new_zoom_float))
 
-        # Update the UI label with the (potentially clamped) new zoom level immediately
+        # Update the UI label and the DoubleVar (which moves the slider handle)
         if hasattr(self, 'map_zoom_label') and self.map_zoom_label.winfo_exists():
             try:
                 self.map_zoom_label.config(text=f"{int(potential_new_zoom_float * 100)}%")
-            except tk.TclError: pass # Ignore if label is being destroyed
+            except tk.TclError: pass
+
+        # Update the DoubleVar to sync the Slider
+        if abs(self.map_zoom_var.get() - potential_new_zoom_float) > 1e-4:
+            self.map_zoom_var.set(potential_new_zoom_float)
 
         # Determine if a full redraw is warranted
         force_redraw_due_to_int_size_change = (current_int_display_tile_size != potential_new_int_display_tile_size)
@@ -8338,7 +8367,7 @@ class TileEditorApp:
             return
 
         # Define layout parameters
-        zoom = self.tile_selector_zoom
+        zoom = self.tile_selector_zoom_var.get()
         margin = self.selector_margin
         size = int(VIEWER_TILE_SIZE * zoom)
         cell_size = size + (margin * 2)
@@ -8421,7 +8450,7 @@ class TileEditorApp:
             _debug("   No relevant selector canvas is active/found to scroll.")
             return
 
-        zoom = self.st_selector_zoom
+        zoom = self.st_selector_zoom_var.get()
         margin = self.selector_margin
         item_w = int((self.supertile_grid_width * TILE_WIDTH) * zoom)
         item_h = int((self.supertile_grid_height * TILE_HEIGHT) * zoom)
@@ -10757,13 +10786,13 @@ class TileEditorApp:
         if target_idx_motion >= 0 and canvas_motion == target_canvas_for_indicator and not self.is_alt_pressed:
             margin = self.selector_margin
             if self.drag_item_type == "tile":
-                zoom = self.tile_selector_zoom
+                zoom = self.tile_selector_zoom_var.get()
                 item_w = int(VIEWER_TILE_SIZE * zoom)
                 item_h = int(VIEWER_TILE_SIZE * zoom)
                 items_across_ind = NUM_TILES_ACROSS
                 max_items_ind = len(tileset_patterns)
             elif self.drag_item_type == "supertile":
-                zoom = self.st_selector_zoom
+                zoom = self.st_selector_zoom_var.get()
                 item_w = int((self.supertile_grid_width * TILE_WIDTH) * zoom)
                 item_h = int((self.supertile_grid_height * TILE_HEIGHT) * zoom)
                 max_items_ind = len(supertiles_data)
@@ -13855,6 +13884,23 @@ class TileEditorApp:
         canvas = event.widget
         if not canvas.winfo_exists():
             return
+
+        # Check if Ctrl key is pressed (mask 0x0004) to handle zooming
+        if event.state & 0x0004:
+            # 1. Map Canvas Zoom (Centering on cursor logic)
+            if canvas == self.map_canvas:
+                self.handle_map_zoom_scroll(event)
+                return "break"
+            
+            # 2. Supertile Selector Zoom (Updates st_selector_zoom_var)
+            if canvas in [self.supertile_selector_canvas, self.map_supertile_selector_canvas]:
+                self.zoom_st_selector(event)
+                return "break"
+            
+            # 3. Tile Selector Zoom (Updates tile_selector_zoom_var)
+            if canvas in [self.tileset_canvas, self.st_tileset_canvas]:
+                self.zoom_tile_selector(event)
+                return "break"  
 
         scroll_units = 0
         if event.num == 5 or event.delta < 0:  # Scroll Down
@@ -17075,7 +17121,7 @@ class TileEditorApp:
         canvas_w = dialog.canvas.winfo_width()
         if canvas_w <= 1: return
 
-        zoom = self.tile_selector_zoom
+        zoom = self.tile_selector_zoom_var.get()
         margin = self.selector_margin
         size = int(VIEWER_TILE_SIZE * zoom)
         # cell_size is the total area of one tile including its margins
@@ -17291,7 +17337,7 @@ class TileEditorApp:
         """
         if not dialog.winfo_exists(): return
         
-        zoom = self.tile_selector_zoom
+        zoom = self.tile_selector_zoom_var.get()
         margin = self.selector_margin
         size = int(VIEWER_TILE_SIZE * zoom)
         cell_size = size + 1
@@ -18014,6 +18060,152 @@ class TileEditorApp:
         }
         _debug("Export settings reset to defaults.")
 
+    def zoom_st_selector(self, event):
+        """Adjusts the zoom level for supertile selection panes via Ctrl+MouseWheel."""
+        # Determine zoom direction
+        zoom_in = (event.num == 4 or event.delta > 0)
+        factor = 1.2 if zoom_in else 1 / 1.2
+        
+        old_zoom = self.st_selector_zoom_var.get()
+        new_zoom = old_zoom * factor
+        
+        # Clamp supertile zoom between 0.5x and 6.0x
+        final_zoom = max(0.5, min(6.0, new_zoom))
+        
+        if final_zoom != old_zoom:
+            # Setting the variable triggers the trace (_on_st_zoom_var_change),
+            # which handles redrawing and scrolling via a throttled timer.
+            self.st_selector_zoom_var.set(final_zoom)
+
+    def zoom_tile_selector(self, event):
+        """Adjusts the zoom level for tileset selection panes via Ctrl+MouseWheel."""
+        # Determine zoom direction
+        zoom_in = (event.num == 4 or event.delta > 0)
+        factor = 1.2 if zoom_in else 1 / 1.2
+        
+        old_zoom = self.tile_selector_zoom_var.get()
+        new_zoom = old_zoom * factor
+        
+        # Clamp tile zoom between 1.0x and 6.0x as per Step 1 requirements
+        final_zoom = max(1.0, min(6.0, new_zoom))
+        
+        if final_zoom != old_zoom:
+            # Setting the variable triggers the trace (_on_tile_zoom_var_change),
+            # which handles cache clearing and redrawing via a throttled timer.
+            self.tile_selector_zoom_var.set(final_zoom)
+
+    def _on_tile_zoom_var_change(self, *args):
+        """Trace callback with throttling for tile zoom changes."""
+        if self._tile_zoom_timer is not None:
+            self.root.after_cancel(self._tile_zoom_timer)
+        self._tile_zoom_timer = self.root.after(50, self._perform_tile_zoom_redraw)
+
+    def _perform_tile_zoom_redraw(self):
+        """Clears caches and redraws all tile-based viewers at the new zoom level."""
+        self._tile_zoom_timer = None
+        self.tile_image_cache.clear()
+        if hasattr(self, 'tileset_canvas') and self.tileset_canvas.winfo_exists():
+            self.draw_tileset_viewer(self.tileset_canvas, current_tile_index)
+        if hasattr(self, 'st_tileset_canvas') and self.st_tileset_canvas.winfo_exists():
+            self.draw_tileset_viewer(self.st_tileset_canvas, selected_tile_for_supertile)
+        self.scroll_viewers_to_tile(current_tile_index)
+
+    def _on_st_zoom_var_change(self, *args):
+        """Trace callback with throttling for supertile zoom changes."""
+        if self._st_zoom_timer is not None:
+            self.root.after_cancel(self._st_zoom_timer)
+        self._st_zoom_timer = self.root.after(50, self._perform_st_zoom_redraw)
+
+    def _perform_st_zoom_redraw(self):
+        """Clears caches and redraws all supertile selectors at the new zoom level."""
+        self._st_zoom_timer = None
+        self.supertile_image_cache.clear()
+        if hasattr(self, 'supertile_selector_canvas') and self.supertile_selector_canvas.winfo_exists():
+            self.draw_supertile_selector(self.supertile_selector_canvas, current_supertile_index)
+        if hasattr(self, 'map_supertile_selector_canvas') and self.map_supertile_selector_canvas.winfo_exists():
+            self.draw_supertile_selector(self.map_supertile_selector_canvas, selected_supertile_for_map)
+        
+        # Ensure selection remains visible in the active tab
+        active_st = current_supertile_index
+        try:
+            selected_tab = self.notebook.select()
+            if selected_tab and self.notebook.nametowidget(selected_tab) == self.tab_map_editor:
+                active_st = selected_supertile_for_map
+        except tk.TclError: pass
+        self.scroll_selectors_to_supertile(active_st)
+
+    def _on_map_zoom_var_change(self, *args):
+        """Trace callback with throttling for map zoom changes."""
+        if self._map_zoom_timer is not None:
+            self.root.after_cancel(self._map_zoom_timer)
+        self._map_zoom_timer = self.root.after(50, self._perform_map_zoom_redraw)
+
+    def _perform_map_zoom_redraw(self):
+        """Synchronizes the legacy float with the DoubleVar and triggers centered zoom."""
+        self._map_zoom_timer = None
+        new_zoom = self.map_zoom_var.get()
+        
+        # Only trigger the expensive centered zoom logic if the value has 
+        # actually changed compared to the internal state float.
+        if abs(self.map_zoom_level - new_zoom) > 1e-4:
+            # We call the existing set_map_zoom which handles viewport centering
+            self.set_map_zoom(new_zoom)
+        
+    def _create_zoom_bar(self, parent_frame, selector_canvas, zoom_var, min_val, max_val):
+        """Factory to create an ultra-slim zoom control that aligns with the border."""
+        try:
+            bg_color = parent_frame.cget("background")
+        except tk.TclError:
+            bg_color = ttk.Style().lookup(parent_frame.winfo_class(), "background")
+        
+        if not bg_color:
+            bg_color = "#f0f0f0"
+
+        # The container Frame will shrink to fit the height of its children.
+        # Setting highlightthickness and borderwidth to 0 removes internal padding.
+        container = tk.Frame(parent_frame, background=bg_color, borderwidth=0, highlightthickness=0)
+        
+        # Reset Button: Use a tiny font (size 10) to reduce vertical footprint.
+        reset_btn = tk.Label(container, text="•", background=bg_color, cursor="hand2", 
+                             font=("Arial", 10, "bold"), fg="#808080", padx=0, pady=0)
+        reset_btn.pack(side=tk.LEFT, padx=(0, 2))
+        reset_btn.bind("<Button-1>", lambda e: zoom_var.set(1.0))
+
+        # Minimalist Slider: 
+        # 'width' is the VERTICAL height of the bar. Set to 4 for a razor-thin look.
+        # highlightthickness=0 is critical to remove the invisible padding box.
+        slider = tk.Scale(
+            container, 
+            from_=min_val, to=max_val, 
+            variable=zoom_var, 
+            orient=tk.HORIZONTAL,
+            showvalue=0, 
+            resolution=0.1,
+            length=60,            
+            width=8,              # Vertical height of the trough
+            sliderlength=8,       # Horizontal width of the handle
+            borderwidth=0, 
+            highlightthickness=0, # Removes the focus padding height
+            background=bg_color,
+            troughcolor="#C0C0C0"
+        )
+        slider.pack(side=tk.LEFT, padx=2, pady=0)
+
+        # Percentage Label: Using size 6 font.
+        percent_label = tk.Label(container, text="100%", background=bg_color, 
+                                 font=("Segoe UI", 9), width=4, fg="#606060", padx=0, pady=0)
+        percent_label.pack(side=tk.LEFT, pady=0)
+        
+        def update_label(*args):
+            try:
+                percent_label.config(text=f"{int(zoom_var.get() * 100)}%")
+            except (tk.TclError, ValueError): pass
+        zoom_var.trace_add("write", update_label)
+
+        # directly on top of a standard LabelFrame border.
+        container.place(relx=1.0, x=-10, y=-19, anchor="ne")
+        container.lift()
+        tk.Widget.tkraise(selector_canvas)
 
 
 # print(dir(TileEditorApp))
