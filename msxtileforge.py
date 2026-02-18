@@ -4206,8 +4206,8 @@ class TileEditorApp:
         right_frame.grid_rowconfigure(1, weight=1) # Tileset Viewer expands to fill vertical space
         right_frame.grid_rowconfigure(2, weight=0)
 
-        palette_frame = ttk.LabelFrame(right_frame, text="Color Selector (Click to select color for FG/BG)")
-        palette_frame.grid(row=0, column=0, pady=(0, 10), sticky="nw") 
+        palette_frame = ttk.LabelFrame(right_frame, text="Color (Select color and click the FG/BG swatches)")
+        palette_frame.grid(row=0, column=0, pady=(0, 10), sticky="new") 
         self.tile_editor_palette_canvas = tk.Canvas(
             palette_frame,
             width=4 * (PALETTE_SQUARE_SIZE + 2) + 2,
@@ -4505,7 +4505,7 @@ class TileEditorApp:
         st_editor_paned_window.bind("<ButtonRelease-1>", self._capture_sash_position)
 
         st_selector_frame = ttk.LabelFrame(
-            st_editor_paned_window, text="Supertile Selector",
+            st_editor_paned_window, text="Supertiles",
             name="st_editor_selector_frame"
         )
         st_editor_paned_window.add(st_selector_frame, weight=0)
@@ -4669,7 +4669,7 @@ class TileEditorApp:
 
         palette_area_frame.grid_rowconfigure(0, weight=1)
         palette_area_frame.grid_columnconfigure(0, weight=1)
-        st_selector_frame = ttk.LabelFrame(palette_area_frame, text="Supertile Selector")
+        st_selector_frame = ttk.LabelFrame(palette_area_frame, text="Supertiles")
         st_selector_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.W, tk.E))
         st_selector_frame.grid_rowconfigure(0, weight=1)
         st_selector_frame.grid_columnconfigure(0, weight=1)
