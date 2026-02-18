@@ -3363,6 +3363,8 @@ class TileEditorApp:
             except (tk.TclError, KeyError) as e:
                 _error(f"Could not apply map editor sash position: {e}")
 
+        self._perform_tile_zoom_redraw()
+
         _debug(" TileEditorApp __init__ finished.")
 
     # --- Palette Conversion Helpers ---
@@ -18077,7 +18079,6 @@ class TileEditorApp:
 
     def _perform_tile_zoom_redraw(self):
         """Clears caches and redraws tile viewers, strictly clamping height to the window's bottom."""
-
         self._tile_zoom_timer = None
         self.tile_image_cache.clear()
 
@@ -18085,6 +18086,41 @@ class TileEditorApp:
         margin = self.selector_margin
         size = int(VIEWER_TILE_SIZE * zoom)
         cell_size = size + (margin * 2)
+
+        ideal_dimension = (NUM_TILES_ACROSS * cell_size)
+        _debug(f" _perform_tile_zoom_redraw: ideal dimension is {ideal_dimension}.")
+
+        if hasattr(self, 'tileset_canvas') and self.tileset_canvas.winfo_exists():
+            _debug(f" _perform_tile_zoom_redraw: [tile] trying to apply target width of {ideal_dimension}.")
+            self.tileset_canvas.config(width=ideal_dimension, height=ideal_dimension)
+            self.draw_tileset_viewer(self.tileset_canvas, current_tile_index)
+
+        if hasattr(self, 'st_tileset_canvas') and self.st_tileset_canvas.winfo_exists():
+            _debug(f" _perform_tile_zoom_redraw: [st] trying to apply target width of {ideal_dimension}.")
+            self.st_tileset_canvas.config(width=ideal_dimension)
+            self.draw_tileset_viewer(self.st_tileset_canvas, selected_tile_for_supertile)
+            
+        # Ensure selection remains visible in the active tab
+        active_tile = current_tile_index
+        try:
+            selected_tab = self.notebook.select()
+            if selected_tab and self.notebook.nametowidget(selected_tab) == self.tab_supertile_editor:
+                active_tile = selected_tile_for_supertile
+        except tk.TclError: pass
+        self.scroll_viewers_to_tile(active_tile)
+
+        self.draw_supertile_definition_canvas()
+
+    def _perform_tile_zoom_redraw2(self):
+        """Clears caches and redraws tile viewers, strictly clamping height to the window's bottom."""
+        self._tile_zoom_timer = None
+        self.tile_image_cache.clear()
+
+        zoom = self.tile_selector_zoom_var.get()
+        margin = self.selector_margin
+        size = int(VIEWER_TILE_SIZE * zoom)
+        cell_size = size + (margin * 2)
+
         ideal_width = (NUM_TILES_ACROSS * cell_size)
         tile_editor_width = self.tile_editor_main_frame.winfo_width()
         supertile_editor_width = self.supertile_editor_main_frame.winfo_width()
@@ -18169,7 +18205,8 @@ class TileEditorApp:
                 
                 # Apply the width. Because of the anchor setting, this will grow/shrink the selector.
                 _debug(f" _perform_tile_zoom_redraw: [st] trying to apply target width of {target_width_st}.")
-                self.st_tileset_canvas.config(width=target_width_st)
+                # self.st_tileset_canvas.config(width=target_width_st)
+                self.st_tileset_canvas.config(width=ideal_width)
             except (AttributeError, tk.TclError):
                 _debug(f" _perform_tile_zoom_redraw/except: [st] trying to apply ideal width of {ideal_width}.")
                 self.st_tileset_canvas.config(width=ideal_width)
@@ -18188,6 +18225,7 @@ class TileEditorApp:
         """Clears caches and redraws all supertile selectors at the new zoom level."""
         self._st_zoom_timer = None
         self.supertile_image_cache.clear()
+
         if hasattr(self, 'supertile_selector_canvas') and self.supertile_selector_canvas.winfo_exists():
             self.draw_supertile_selector(self.supertile_selector_canvas, current_supertile_index)
         if hasattr(self, 'map_supertile_selector_canvas') and self.map_supertile_selector_canvas.winfo_exists():
