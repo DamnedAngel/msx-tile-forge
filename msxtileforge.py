@@ -11339,7 +11339,7 @@ class TileEditorApp:
         attribution_title = ttk.Label(text_frame, text="Attribution Request", font=("TkDefaultFont", 9, "bold"))
         attribution_title.pack(anchor="w")
         
-        note_text = ("Creating a game with this? We'd love a shout-out! "
+        note_text = ("Creating a game with this? I'd love a shout-out! "
                      "Mentioning 'MSX Tile Forge' in your credits is not mandatory, "
                      "but it helps the project grow and is greatly appreciated.")
         note_label = ttk.Label(text_frame, text=note_text, wraplength=350, justify=tk.LEFT, font=("TkDefaultFont", 9, ""))
