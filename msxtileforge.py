@@ -2877,7 +2877,7 @@ class ImageImportDialog(tk.Toplevel):
         legend_frame = ttk.Frame(right_panel_frame)
         legend_frame.pack(anchor="nw")
         
-        icon_font = font.Font(family="Segoe UI Emoji", size=10)
+        icon_font = font.Font(family="Symbola", size=10)
         
         auto_frame = ttk.Frame(legend_frame)
         auto_frame.pack(anchor="w")
@@ -3005,7 +3005,7 @@ class ImageImportDialog(tk.Toplevel):
         
         if icon:
             font_size = 14
-            icon_font = font.Font(family="Segoe UI Emoji", size=font_size)
+            icon_font = font.Font(family="Symbola", size=font_size)
             
             # Stroked text for contrast
             canvas.create_text(17, 18, text=icon, font=icon_font, fill="white")
