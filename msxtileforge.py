@@ -17693,7 +17693,7 @@ class TileEditorApp:
         else:
             # We are running from a standard Python script (.py).
             # The script is located alongside the main application script.
-            base_path = os.path.dirname(os.path.abspath(__file__))
+            base_path = os.path.dirname(os.path.realpath(sys.argv[0]))
         return os.path.join(base_path, script_name)
 
     def _update_selected_color_info_panel_tile_tab(self):
