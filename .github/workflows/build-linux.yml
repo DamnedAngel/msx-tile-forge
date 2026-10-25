@@ -18,15 +18,15 @@ on:
 
 jobs:
   build_lin:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Download prepared source code
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.prepared_source_artifact_name }}
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -46,13 +46,13 @@ jobs:
           mv "$DEB_FILE" "dist/${{ inputs.deb_filename }}"
 
       - name: Upload Linux tar.gz artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.lin_filename }}
           path: dist/${{ inputs.lin_filename }}
 
       - name: Upload Debian package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.deb_filename }}
           path: dist/${{ inputs.deb_filename }}

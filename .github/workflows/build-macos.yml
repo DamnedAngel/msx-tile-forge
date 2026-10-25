@@ -14,15 +14,15 @@ on:
 
 jobs:
   build_mac:
-    runs-on: macos-latest
+    runs-on: macos-26
     steps:
       - name: Download prepared source code
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.prepared_source_artifact_name }}
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -33,7 +33,7 @@ jobs:
         run: make all-mac MAC_ZIP=${{ inputs.mac_filename }}
 
       - name: Upload macOS zip artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.mac_filename }}
           path: dist/${{ inputs.mac_filename }}

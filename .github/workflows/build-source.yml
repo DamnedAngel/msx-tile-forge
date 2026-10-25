@@ -14,10 +14,10 @@ on:
 
 jobs:
   build_src:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Download prepared source code
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.prepared_source_artifact_name }}
       
@@ -25,7 +25,7 @@ jobs:
         run: make sdist SRC_ZIP=${{ inputs.src_filename }}
 
       - name: Upload final source artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.src_filename }}
           path: dist/${{ inputs.src_filename }}
