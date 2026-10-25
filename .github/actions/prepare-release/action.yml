@@ -1,0 +1,111 @@
+name: 'Verify Packages and Prepare Release Notes'
+description: 'Checks that the packages are complete and correctly version-stamped, writes SHA256SUMS.txt and release-notes.md.'
+
+inputs:
+  packages_dir:
+    description: 'Directory holding the final packages (*_win.zip, *_mac.zip, *_lin.tar.gz, *_deb.deb, *_src.zip)'
+    required: true
+  version:
+    description: 'Expected version string stamped in the sources (e.g., 01.00.00)'
+    required: true
+  debian_version:
+    description: 'Expected Debian package version (e.g., 01.00.00 or 01.00.00~rc1~45)'
+    required: true
+  changelog_version:
+    description: 'Version heading to extract from CHANGELOG.md (e.g., 01.00.00)'
+    required: true
+  intro:
+    description: 'First paragraph of the release notes'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify packages
+      shell: bash
+      env:
+        PKG_DIR: ${{ inputs.packages_dir }}
+        VERSION: ${{ inputs.version }}
+        DEB_VERSION: ${{ inputs.debian_version }}
+      run: |
+        set -euo pipefail
+        cd "$PKG_DIR"
+        fail() { echo "::error::$1"; exit 1; }
+
+        # 1. All five packages must be present, exactly once.
+        for suffix in _win.zip _mac.zip _lin.tar.gz _deb.deb _src.zip; do
+          COUNT=$(ls -1 | grep -c -- "${suffix}\$" || true)
+          [ "$COUNT" -eq 1 ] || fail "Expected exactly one *${suffix} package, found ${COUNT}."
+        done
+        WIN=$(ls *_win.zip); MAC=$(ls *_mac.zip); LIN=$(ls *_lin.tar.gz); DEB=$(ls *_deb.deb); SRC=$(ls *_src.zip)
+
+        # 2. Source archive: every script stamped, no placeholder left.
+        rm -rf /tmp/verify && mkdir -p /tmp/verify/src
+        unzip -q "$SRC" -d /tmp/verify/src
+        for s in msxtileforge msxtileexport msxtilemagic tilerandomizer supertilerandomizer; do
+          F=$(find /tmp/verify/src -name "$s.py" | head -n 1)
+          [ -n "$F" ] || fail "$s.py missing from $SRC"
+          grep -q "^APP_VERSION = \"${VERSION}\"" "$F" || fail "$s.py in $SRC is not stamped with ${VERSION}"
+        done
+        if grep -rq "<unreleased>" /tmp/verify/src; then fail "Placeholder <unreleased> still present in $SRC"; fi
+        for f in README.md LICENSE CHANGELOG.md; do
+          [ -n "$(find /tmp/verify/src -name "$f" | head -n 1)" ] || fail "$f missing from $SRC"
+        done
+
+        # 3. Binary packages: license/readme/changelog shipped, helper scripts bundled and stamped.
+        check_bundle() { # $1=package name, $2=listing file
+          for f in LICENSE README.md CHANGELOG.md; do
+            grep -q "msxtileforge/${f}\$" "$2" || fail "$f missing from $1"
+          done
+        }
+        unzip -Z1 "$WIN" > /tmp/verify/win.lst; check_bundle "$WIN" /tmp/verify/win.lst
+        unzip -Z1 "$MAC" > /tmp/verify/mac.lst; check_bundle "$MAC" /tmp/verify/mac.lst
+        tar -tzf "$LIN" > /tmp/verify/lin.lst;  check_bundle "$LIN" /tmp/verify/lin.lst
+        for s in msxtileexport msxtilemagic tilerandomizer supertilerandomizer; do
+          unzip -p "$WIN" "msxtileforge/_internal/$s.py" | grep -q "^APP_VERSION = \"${VERSION}\"" || fail "$s.py bundled in $WIN is not stamped with ${VERSION}"
+          unzip -p "$MAC" "msxtileforge/_internal/$s.py" | grep -q "^APP_VERSION = \"${VERSION}\"" || fail "$s.py bundled in $MAC is not stamped with ${VERSION}"
+          tar -xzOf "$LIN" "msxtileforge/_internal/$s.py" | grep -q "^APP_VERSION = \"${VERSION}\"" || fail "$s.py bundled in $LIN is not stamped with ${VERSION}"
+        done
+
+        # 4. Debian package version and license file.
+        GOT=$(dpkg-deb -f "$DEB" Version)
+        [ "$GOT" = "$DEB_VERSION" ] || fail "Debian version is '${GOT}', expected '${DEB_VERSION}'"
+        dpkg-deb -c "$DEB" | grep -q "usr/share/doc/msxtileforge/copyright" || fail "debian/copyright not installed in $DEB"
+        echo "All packages verified for version ${VERSION}."
+
+    - name: Write checksums and release notes
+      shell: bash
+      env:
+        PKG_DIR: ${{ inputs.packages_dir }}
+        CL_VERSION: ${{ inputs.changelog_version }}
+        INTRO: ${{ inputs.intro }}
+      run: |
+        set -euo pipefail
+        ( cd "$PKG_DIR" && sha256sum *_win.zip *_mac.zip *_lin.tar.gz *_deb.deb *_src.zip > SHA256SUMS.txt )
+
+        NOTES="release-notes.md"
+        printf '%s\n\n' "$INTRO" > "$NOTES"
+        # Extract this version's section from CHANGELOG.md (heading '## [x.y.z]' up to the next '## [').
+        SECTION=$(awk -v v="$CL_VERSION" '
+          /^## \[/ { if (found) exit; if (index($0, "[" v "]")) { found=1; next } }
+          found { print }
+        ' CHANGELOG.md | tr -d '\r')
+        if [ -n "$SECTION" ]; then
+          printf "## What's new\n%s\n\n" "$SECTION" >> "$NOTES"
+        else
+          echo "::warning::No section [${CL_VERSION}] found in CHANGELOG.md; using a generic note."
+        fi
+        {
+          echo "## Downloads"
+          echo
+          echo "| Platform | Package |"
+          echo "|---|---|"
+          echo "| Windows | \`*_win.zip\` |"
+          echo "| Linux | \`*_lin.tar.gz\` |"
+          echo "| Debian/Ubuntu | \`*_deb.deb\` |"
+          echo "| macOS | \`*_mac.zip\` |"
+          echo "| Source | \`*_src.zip\` |"
+          echo
+          echo "Verify downloads with \`SHA256SUMS.txt\`. Licensed under GPL-3.0 with a Section 7(b) attribution term; see \`LICENSE\`."
+        } >> "$NOTES"
+        echo "--- release notes ---"; cat "$NOTES"

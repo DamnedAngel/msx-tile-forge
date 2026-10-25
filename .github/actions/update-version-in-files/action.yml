@@ -1,5 +1,5 @@
 name: 'Update Version in Source Files'
-description: 'Finds all .py files and the debian/changelog and replaces <unreleased> with the provided version strings.'
+description: 'Finds all .py files and the debian/changelog and replaces <unreleased> with the provided version strings. Fails if any placeholder is left behind.'
 
 inputs:
   version_string:
@@ -20,3 +20,23 @@ runs:
         if [ -f "debian/changelog" ]; then
           sed -i "s/<unreleased>/${{ inputs.debian_version }}/g" debian/changelog
         fi
+
+    - name: Verify that every placeholder was replaced
+      shell: bash
+      run: |
+        for f in msxtileforge msxtileexport msxtilemagic tilerandomizer supertilerandomizer; do
+          if ! grep -q '^APP_VERSION = "${{ inputs.version_string }}"' "$f.py"; then
+            echo "::error::$f.py was not stamped with version ${{ inputs.version_string }}"
+            exit 1
+          fi
+        done
+        LEFT=$(grep -rl --include="*.py" "<unreleased>" . | grep -v "^./Previous versions/" || true)
+        if [ -n "$LEFT" ]; then
+          echo "::error::A <unreleased> placeholder is still present in: $LEFT"
+          exit 1
+        fi
+        if [ -f debian/changelog ] && ! head -n 1 debian/changelog | grep -q "(${{ inputs.debian_version }})"; then
+          echo "::error::debian/changelog was not stamped with ${{ inputs.debian_version }}"
+          exit 1
+        fi
+        echo "Version stamping verified: ${{ inputs.version_string }}"
