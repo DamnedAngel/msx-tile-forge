@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # MSX Tile Forge - A tile and map editor for MSX2
-# Copyright (C) 2026 DamnedAngel
+# Copyright (C) 2025-2026 DamnedAngel
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -11352,13 +11352,13 @@ class TileEditorApp:
         note_bold_font = note_font.copy()
         note_bold_font.configure(weight="bold")
         note_bg = ttk.Style().lookup("TFrame", "background") or about_win.cget("background")
-        note_text = tk.Text(text_frame, width=48, height=4, wrap="word", font=note_font,
+        note_text = tk.Text(text_frame, width=48, height=6, wrap="word", font=note_font,
                             bg=note_bg, relief="flat", borderwidth=0, highlightthickness=0,
                             padx=0, pady=0, cursor="arrow")
         note_text.tag_configure("bold", font=note_bold_font)
         note_text.insert("end", "Creating a game with this? I'd love a shout-out! Mentioning ")
         note_text.insert("end", "\"Made with MSX Tile Forge\"", "bold")
-        note_text.insert("end", " in your credits is not mandatory, but ")
+        note_text.insert("end", " in your game's credits, interface, source code and/or documentation is not mandatory, but ")
         note_text.insert("end", "it costs you nothing and helps the project grow, and is greatly appreciated.", "bold")
         note_text.configure(state="disabled")
         note_text.pack(anchor="w", pady=(2, 10))

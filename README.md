@@ -1,6 +1,7 @@
-# MSX Tile Forge
+# <img src="Resources/icon4_1.png" alt="MSX Tile Forge logo" width="64" height="64" align="bottom"> MSX Tile Forge
 
 [![Latest Release](https://img.shields.io/github/v/release/DamnedAngel/msx-tile-forge?include_prereleases&label=Latest%20Release&color=blue)](https://github.com/DamnedAngel/msx-tile-forge/releases/latest)
+
 [![Nightly Build Status](https://github.com/DamnedAngel/msx-tile-forge/actions/workflows/nightly-build.yml/badge.svg)](https://github.com/DamnedAngel/msx-tile-forge/actions/workflows/nightly-build.yml)
 
 An integrated Palette, Tile, Supertile and Map Editor for MSX, built with Python and Tkinter.
@@ -15,7 +16,7 @@ All project components (palette, tiles, supertiles, map) can be saved and loaded
 
 You can download pre-compiled, ready-to-run versions of MSX Tile Forge for various operating systems.
 
-*   **Latest Official Release & Release Candidates:** For the most stable versions (yet to be populated), please visit the **[Releases Page](https://github.com/DamnedAngel/msx-tile-forge/releases)**. (Note: The first official release is coming soon!)
+*   **Latest Official Release & Release Candidates:** For the most stable versions, please visit the **[Releases Page](https://github.com/DamnedAngel/msx-tile-forge/releases)**.
 
 *   **Nightly Builds:** For the latest "bleeding-edge" features and fixes, you can download a build from the most recent successful nightly run. These builds are generated automatically and are not guaranteed to be stable, but they represent the most up-to-date version of the software.
     *   **[Browse All Nightly Builds on the Internet Archive](https://archive.org/search.php?query=subject%3A"msxtileforge_nightly_build"&sort=-addeddate)**
@@ -343,6 +344,42 @@ The import process uses the `msxtilemagic.py` script to perform the complex anal
     *   **Synthesize Tiles:** If multiple visually similar but distinct 8x8 tiles from the image are merged into a single "best" tile, this option will try to create a new, hybrid tile that better represents the merged group, potentially improving visual fidelity.
     *   **Color Metrics:** For advanced color science enthusiasts, this allows choosing the mathematical model for comparing colors (`weighted-rgb`, `CIEDE2000`, etc.), which can affect palette generation and tile matching. `CIEDE2000` is the most perceptually accurate but requires the optional `colour-science` library.
 
+## Command-Line Tools
+
+The following scripts ship alongside the main application (they are bundled in the pre-compiled packages and available in the source archive). Run any of them with `-h` for the full option list. Requires Python 3 and the dependencies in `requirements.txt`.
+
+### `msxtileexport.py` - Export a project to binary and include files
+
+```bash
+python msxtileexport.py project.SC4Map --output-dir build --asm --c-header
+```
+
+*   `source_filepath` (required): any file of the project (e.g., `project.SC4Map`); the other components are located by name.
+*   `--output-dir DIR`: where to write the exported files (default: current directory).
+*   `--output-basename NAME`: base name for the exported files (default: the source file's name).
+*   `--asm`: also generate an assembly include file (`.s`).
+*   `--c-header`: also generate C headers (`_meta.h` and `_data.h`).
+*   `--nopal`, `--notiles`, `--nosuper`, `--nomap`: skip the raw binary export of a component.
+*   `--c-nopal`, `--c-notiles`, `--c-nosuper`, `--c-nomap` and `--asm-nopal`, `--asm-notiles`, `--asm-nosuper`, `--asm-nomap`: leave a component out of the C header or assembly include.
+
+This is the same tool the `Import/Export -> Export Raw Project...` dialog runs.
+
+### `tilerandomizer.py` - Randomize tiles in supertiles
+
+```bash
+python tilerandomizer.py my.SC4Super --source "5,8,12-16" --dest "50-65,70" --consistent
+```
+
+Replaces the tile indexes in `--source` with random picks from `--dest` throughout a `.SC4Super` file. Indexes are comma-separated numbers and/or ranges. With `--consistent`, every occurrence of a given source tile becomes the *same* replacement; without it, each occurrence gets a new random pick. The original file is preserved as a backup (`*_old1.SC4Super`, `*_old2.SC4Super`, ...).
+
+### `supertilerandomizer.py` - Randomize supertiles in a map
+
+```bash
+python supertilerandomizer.py my.SC4Map --source "3" --dest "10-14"
+```
+
+Same syntax and behavior as `tilerandomizer.py`, but replaces supertile indexes in a `.SC4Map` file (useful for adding natural variation to terrain). Backups are saved as `*_old1.SC4Map`, etc.
+
 ## Technical Description of Generated Files
 
 All project assets are saved in custom binary file formats. Multi-byte numerical values (like map dimensions or 16-bit counts) are stored in **Little-Endian** format (`<H`).
@@ -399,9 +436,18 @@ Contributions to MSX Tile Forge are welcome! If you have bug reports, feature su
 
 Clear descriptions and, where applicable, steps to reproduce issues are greatly appreciated.
 
+By submitting a contribution, you agree that it is licensed under the same terms as the project (GPL-3.0 with the Section 7(b) attribution term described in the [License](#license) section), and that you have the right to submit it.
+
 ## License
 
 This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**, with one additional term under Section 7(b): any modified version must preserve the original copyright notice and the author attribution "Damned Angel" in the Appropriate Legal Notices it displays (e.g. the "About" dialog).
 
 The full text of the license is included in the `LICENSE` file. It can also be found online at:
 [https://www.gnu.org/licenses/gpl-3.0.html](https://www.gnu.org/licenses/gpl-3.0.html)
+
+### What this means for you
+
+*   **Your own work is yours.** The license covers MSX Tile Forge itself, not what you create with it. Projects, maps, images and the files you export (binaries, `.s` assembly includes, `.h` C headers) are yours; you can use them in any game, free or commercial, with no license obligation.
+*   **Credit is optional, but appreciated.** Creating a game with this? I'd love a shout-out! Mentioning **"Made with MSX Tile Forge"** in your game's credits, interface, source code and/or documentation is not mandatory, but **it costs you nothing and helps the project grow, and is greatly appreciated.**
+*   **Modified versions must keep the author's credit.** If you distribute a modified version of MSX Tile Forge, it must keep the original copyright notice and the "Damned Angel" attribution in its legal notices (e.g., the About dialog), and must itself be released under the GPL-3.0.
+*   **Artwork.** The icon and splash images in `Resources/` are distributed with the project as part of it, under the same license as the code.

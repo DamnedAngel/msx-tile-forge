@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # MSX Tile Forge - A tile and map editor for MSX2
-# Copyright (C) 2026 DamnedAngel
+# Copyright (C) 2025-2026 DamnedAngel
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
