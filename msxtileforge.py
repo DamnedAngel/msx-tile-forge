@@ -18,6 +18,13 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
 # ------------------------------------------------------------------------------
+# ADDITIONAL TERMS (GNU GPL v3, Section 7(b)):
+# Any modified version of this program must preserve the original copyright
+# notice and the author attribution "Damned Angel" in the Appropriate Legal
+# Notices it displays (e.g. the "About" dialog). No other restrictions are
+# added to the GNU General Public License.
+#
+# ------------------------------------------------------------------------------
 # OPTIONAL ATTRIBUTION REQUEST:
 # If you use MSX Tile Forge to create assets for a published project or game, 
 # a credit line such as "Graphics created with MSX Tile Forge by [Your Name]" 
@@ -11329,7 +11336,7 @@ class TileEditorApp:
         name_label.pack(anchor="w", pady=(0, 2))
 
         # Version and Author
-        version_text = f"Version: {APP_VERSION}\nAuthor: Damned Angel + Gemini AI"
+        version_text = f"Version: {APP_VERSION}\nAuthor: Damned Angel\nMade with Gemini AI"
         info_label = ttk.Label(text_frame, text=version_text, justify=tk.LEFT)
         info_label.pack(anchor="w")
 
@@ -11339,11 +11346,22 @@ class TileEditorApp:
         attribution_title = ttk.Label(text_frame, text="Attribution Request", font=("TkDefaultFont", 9, "bold"))
         attribution_title.pack(anchor="w")
         
-        note_text = ("Creating a game with this? I'd love a shout-out! "
-                     "Mentioning 'MSX Tile Forge' in your credits is not mandatory, "
-                     "but it helps the project grow and is greatly appreciated.")
-        note_label = ttk.Label(text_frame, text=note_text, wraplength=350, justify=tk.LEFT, font=("TkDefaultFont", 9, ""))
-        note_label.pack(anchor="w", pady=(2, 10))
+        # A Text widget is used (instead of a Label) so part of the sentence can be bold.
+        note_font = font.nametofont("TkDefaultFont").copy()
+        note_font.configure(size=9)
+        note_bold_font = note_font.copy()
+        note_bold_font.configure(weight="bold")
+        note_bg = ttk.Style().lookup("TFrame", "background") or about_win.cget("background")
+        note_text = tk.Text(text_frame, width=48, height=4, wrap="word", font=note_font,
+                            bg=note_bg, relief="flat", borderwidth=0, highlightthickness=0,
+                            padx=0, pady=0, cursor="arrow")
+        note_text.tag_configure("bold", font=note_bold_font)
+        note_text.insert("end", "Creating a game with this? I'd love a shout-out! Mentioning ")
+        note_text.insert("end", "\"Made with MSX Tile Forge\"", "bold")
+        note_text.insert("end", " in your credits is not mandatory, but ")
+        note_text.insert("end", "it costs you nothing and helps the project grow, and is greatly appreciated.", "bold")
+        note_text.configure(state="disabled")
+        note_text.pack(anchor="w", pady=(2, 10))
 
         # Legal Notice (GPLv3 + Section 7b)
         license_text = ("This program is released under the GNU GPLv3.\n"

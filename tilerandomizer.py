@@ -18,6 +18,13 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
 # ------------------------------------------------------------------------------
+# ADDITIONAL TERMS (GNU GPL v3, Section 7(b)):
+# Any modified version of this program must preserve the original copyright
+# notice and the author attribution "Damned Angel" in the Appropriate Legal
+# Notices it displays (e.g. the "About" dialog). No other restrictions are
+# added to the GNU General Public License.
+#
+# ------------------------------------------------------------------------------
 # OPTIONAL ATTRIBUTION REQUEST:
 # If you use MSX Tile Forge to create assets for a published project or game, 
 # a credit line such as "Graphics created with MSX Tile Forge by [Your Name]" 
