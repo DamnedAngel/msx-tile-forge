@@ -27,6 +27,7 @@ jobs:
       win_filename: ${{ steps.versioning.outputs.WIN_FILENAME }}
       lin_filename: ${{ steps.versioning.outputs.LIN_FILENAME }}
       deb_filename: ${{ steps.versioning.outputs.DEB_FILENAME }}
+      mac_filename: ${{ steps.versioning.outputs.MAC_FILENAME }}
       src_filename: ${{ steps.versioning.outputs.SRC_FILENAME }}
     steps:
       - name: Construct Nightly Version Strings and Filenames
