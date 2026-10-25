@@ -21,12 +21,12 @@ jobs:
     runs-on: ubuntu-26.04
     steps:
       - name: Download prepared source code
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ${{ inputs.prepared_source_artifact_name }}
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
 
@@ -46,13 +46,13 @@ jobs:
           mv "$DEB_FILE" "dist/${{ inputs.deb_filename }}"
 
       - name: Upload Linux tar.gz artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ inputs.lin_filename }}
           path: dist/${{ inputs.lin_filename }}
 
       - name: Upload Debian package artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ inputs.deb_filename }}
           path: dist/${{ inputs.deb_filename }}
