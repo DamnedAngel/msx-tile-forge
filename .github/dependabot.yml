@@ -1,0 +1,21 @@
+# Dependabot version updates.
+# Note: Dependabot reads this file from the default branch (master). Version-update PRs
+# target the branch below; security-update PRs always target the default branch.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directories:
+      - "/"
+      - "/.github/actions/*"
+    target-branch: "REL_01.01.00"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+  - package-ecosystem: "pip"
+    directory: "/"
+    target-branch: "REL_01.01.00"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "deps"
