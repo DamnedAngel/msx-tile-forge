@@ -1,7 +1,6 @@
 # <img src="Resources/icon4_1.png" alt="MSX Tile Forge logo" width="64" height="64" align="bottom"> MSX Tile Forge
 
-[![Latest Release](https://img.shields.io/github/v/release/DamnedAngel/msx-tile-forge?include_prereleases&label=Latest%20Release&color=blue)](https://github.com/DamnedAngel/msx-tile-forge/releases/latest)
-
+[![Latest Release](https://img.shields.io/github/v/release/DamnedAngel/msx-tile-forge?include_prereleases&label=Latest%20Release&color=blue)](https://github.com/DamnedAngel/msx-tile-forge/releases/latest)<br>
 [![Nightly Build Status](https://github.com/DamnedAngel/msx-tile-forge/actions/workflows/nightly-build.yml/badge.svg)](https://github.com/DamnedAngel/msx-tile-forge/actions/workflows/nightly-build.yml)
 
 An integrated Palette, Tile, Supertile and Map Editor for MSX, built with Python and Tkinter.
