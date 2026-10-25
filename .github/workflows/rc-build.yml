@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version_string: ${{ steps.versioning.outputs.VERSION_STRING }}
+      base_version: ${{ steps.versioning.outputs.BASE_VERSION }}
       debian_version: ${{ steps.versioning.outputs.DEBIAN_VERSION }}
       prepared_source_artifact_name: ${{ steps.versioning.outputs.PREPARED_SOURCE_ARTIFACT_NAME }}
       win_filename: ${{ steps.versioning.outputs.WIN_FILENAME }}
@@ -58,6 +59,7 @@ jobs:
           BASE_NAME="msxtileforge_${FINAL_VERSION}"
 
           echo "VERSION_STRING=${FINAL_VERSION}" >> $GITHUB_OUTPUT
+          echo "BASE_VERSION=${BASE_VERSION}" >> $GITHUB_OUTPUT
           echo "DEBIAN_VERSION=$(echo "$FINAL_VERSION" | sed -e 's/_/~/g')" >> $GITHUB_OUTPUT
           echo "PREPARED_SOURCE_ARTIFACT_NAME=prepared-source-${{ github.run_id }}-${{ github.ref_name }}" >> $GITHUB_OUTPUT
           echo "WIN_FILENAME=${BASE_NAME}_win.zip" >> $GITHUB_OUTPUT
@@ -137,29 +139,43 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Download all final build artifacts
+      - name: Download the final packages only
         uses: actions/download-artifact@v4
         with:
-          path: final-artifacts
-      
+          path: final-packages
+          pattern: msxtileforge_*
+          merge-multiple: true
+
+      - name: Verify packages and prepare release notes
+        uses: ./.github/actions/prepare-release
+        with:
+          packages_dir: final-packages
+          version: ${{ needs.generate-version.outputs.version_string }}
+          debian_version: ${{ needs.generate-version.outputs.debian_version }}
+          changelog_version: ${{ needs.generate-version.outputs.base_version }}
+          intro: 'This is a **pre-release** of MSX Tile Forge for testing. It is not the official release.'
+
       - name: Configure Git
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-      
+
       - name: Create and Push Git Tag
         run: |
-          # We need to checkout to be in a git repo to push the tag
           git checkout ${{ github.ref_name }}
           git tag "v${{ needs.generate-version.outputs.version_string }}"
           git push origin "v${{ needs.generate-version.outputs.version_string }}"
 
       - name: Create GitHub Pre-release and Upload Assets
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "v${{ needs.generate-version.outputs.version_string }}" ./final-artifacts/**/*.{zip,deb,tar.gz} \
+          ls -l final-packages
+          gh release create "v${{ needs.generate-version.outputs.version_string }}" final-packages/* \
+            --verify-tag \
             --title "Release Candidate v${{ needs.generate-version.outputs.version_string }}" \
-            --notes "This is a pre-release version for testing. All packages are attached below." \
+            --notes-file release-notes.md \
             --prerelease

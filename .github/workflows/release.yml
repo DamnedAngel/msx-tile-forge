@@ -128,19 +128,32 @@ jobs:
     needs: [generate-version, build-linux, build-windows, build-macos, build-source]
     runs-on: ubuntu-latest
     steps:
-      - name: Download all final build artifacts
+      - name: Checkout tagged code (for CHANGELOG and repo context)
+        uses: actions/checkout@v4
+
+      - name: Download the final packages only
         uses: actions/download-artifact@v4
         with:
-          path: final-artifacts
-      
-      - name: List final artifacts for verification
-        run: ls -R final-artifacts
+          path: final-packages
+          pattern: msxtileforge_v*
+          merge-multiple: true
+
+      - name: Verify packages and prepare release notes
+        uses: ./.github/actions/prepare-release
+        with:
+          packages_dir: final-packages
+          version: ${{ needs.generate-version.outputs.version_string }}
+          debian_version: ${{ needs.generate-version.outputs.debian_version }}
+          changelog_version: ${{ needs.generate-version.outputs.version_string }}
+          intro: 'Official release of **MSX Tile Forge** ${{ github.ref_name }}.'
 
       - name: Create GitHub Release and Upload Assets
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ github.ref_name }}" ./final-artifacts/*/* \
+          ls -l final-packages
+          gh release create "${{ github.ref_name }}" final-packages/* \
+            --verify-tag \
             --title "MSX Tile Forge ${{ github.ref_name }}" \
-            --notes "Official release. All packages are attached below." \
+            --notes-file release-notes.md \
             --latest

@@ -1,4 +1,4 @@
-﻿name: 4. Nightly Build
+name: 4. Nightly Build
 on:
   schedule:
     - cron: '0 4 * * *'

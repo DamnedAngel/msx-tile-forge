@@ -4,6 +4,8 @@
 MAIN_SCRIPT = msxtileforge.py
 TARGET = dist/$(MAIN_SCRIPT:.py=)
 SDIST = dist/$(MAIN_SCRIPT:.py=)-source
+# Forward-slash path of the PyInstaller output folder (TARGET is rewritten with backslashes on Windows).
+PKG_DIR = dist/$(MAIN_SCRIPT:.py=)
 HELPER_SCRIPTS = msxtileexport.py msxtilemagic.py tilerandomizer.py supertilerandomizer.py
 
 # Define default output filenames. These can be overridden from the command line.
@@ -37,7 +39,7 @@ common:
 		--add-data "supertilerandomizer.py:." \
 		--hidden-import='PIL._tkinter_finder' \
 		--noconfirm $(MAIN_SCRIPT)
-	cp README.md LICENSE $(TARGET_DIR)
+	cp README.md LICENSE CHANGELOG.md $(PKG_DIR)
 
 all-win: prepackage common
 	cd dist && powershell Compress-Archive -Force -Path $(MAIN_SCRIPT:.py=) -DestinationPath $(WIN_ZIP)
@@ -57,6 +59,7 @@ sdist:
 	cp icon.bmp $(SDIST)
 	cp LICENSE $(SDIST)
 	cp README.md $(SDIST)
+	cp CHANGELOG.md $(SDIST)
 	cp requirements.txt $(SDIST)
 	cd dist && zip -r $(SRC_ZIP) msxtileforge-source
 
