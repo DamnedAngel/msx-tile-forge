@@ -53,19 +53,34 @@ runs:
         done
 
         # 3. Binary packages: license/readme/changelog shipped, helper scripts bundled and stamped.
-        check_bundle() { # $1=package name, $2=listing file
-          for f in LICENSE README.md CHANGELOG.md; do
-            grep -q "msxtileforge/${f}\$" "$2" || fail "$f missing from $1"
-          done
-        }
-        unzip -Z1 "$WIN" > /tmp/verify/win.lst; check_bundle "$WIN" /tmp/verify/win.lst
-        unzip -Z1 "$MAC" > /tmp/verify/mac.lst; check_bundle "$MAC" /tmp/verify/mac.lst
-        tar -tzf "$LIN" > /tmp/verify/lin.lst;  check_bundle "$LIN" /tmp/verify/lin.lst
-        for s in msxtileexport msxtilemagic tilerandomizer supertilerandomizer; do
-          unzip -p "$WIN" "msxtileforge/_internal/$s.py" | grep -q "^APP_VERSION = \"${VERSION}\"" || fail "$s.py bundled in $WIN is not stamped with ${VERSION}"
-          unzip -p "$MAC" "msxtileforge/_internal/$s.py" | grep -q "^APP_VERSION = \"${VERSION}\"" || fail "$s.py bundled in $MAC is not stamped with ${VERSION}"
-          tar -xzOf "$LIN" "msxtileforge/_internal/$s.py" | grep -q "^APP_VERSION = \"${VERSION}\"" || fail "$s.py bundled in $LIN is not stamped with ${VERSION}"
-        done
+        #    Python is used because Windows zips (Compress-Archive) store entry names with backslashes.
+        python3 - "$WIN" "$MAC" "$LIN" "$VERSION" <<'PY' || exit 1
+        import re, sys, tarfile, zipfile
+        win, mac, lin, version = sys.argv[1:5]
+        errors = []
+        def norm(n): return n.replace("\\", "/")
+        def check(name, names, read):
+            names = {norm(n): n for n in names}
+            for f in ("LICENSE", "README.md", "CHANGELOG.md"):
+                if "msxtileforge/" + f not in names:
+                    errors.append(f"{f} missing from {name}")
+            for s in ("msxtileexport", "msxtilemagic", "tilerandomizer", "supertilerandomizer"):
+                key = "msxtileforge/_internal/" + s + ".py"
+                if key not in names:
+                    errors.append(f"{s}.py not bundled in {name}")
+                    continue
+                text = read(names[key]).decode("utf-8", "replace")
+                if not re.search(r'^APP_VERSION = "' + re.escape(version) + '"', text, re.M):
+                    errors.append(f"{s}.py bundled in {name} is not stamped with {version}")
+        for p in (win, mac):
+            z = zipfile.ZipFile(p)
+            check(p, z.namelist(), z.read)
+        t = tarfile.open(lin)
+        check(lin, t.getnames(), lambda n: t.extractfile(n).read())
+        for e in errors:
+            print("::error::" + e)
+        sys.exit(1 if errors else 0)
+        PY
 
         # 4. Debian package version and license file.
         GOT=$(dpkg-deb -f "$DEB" Version)
