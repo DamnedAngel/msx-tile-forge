@@ -1,6 +1,37 @@
 #!/bin/env -S python3
 # -*- coding: utf-8 -*-
 
+# MSX Tile Forge - A tile and map editor for MSX2
+# Copyright (C) 2026 DamnedAngel
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# ------------------------------------------------------------------------------
+# ADDITIONAL TERMS (GNU GPL v3, Section 7(b)):
+# Any modified version of this program must preserve the original copyright
+# notice and the author attribution "Damned Angel" in the Appropriate Legal
+# Notices it displays (e.g. the "About" dialog). No other restrictions are
+# added to the GNU General Public License.
+#
+# ------------------------------------------------------------------------------
+# OPTIONAL ATTRIBUTION REQUEST:
+# If you use MSX Tile Forge to create assets for a published project or game, 
+# a credit line such as "Graphics created with MSX Tile Forge by [Your Name]" 
+# is not required by this license, but would be greatly appreciated by the 
+# author and helps support the tool's development.
+# ------------------------------------------------------------------------------
+
 # --- Version info ---
 APP_VERSION = "<unreleased>"
 
@@ -11302,12 +11333,42 @@ class TileEditorApp:
         style = ttk.Style()
         style.configure("About.TLabel", font=("-size", 10, "bold"))
         name_label = ttk.Label(text_frame, text="MSX Tile Forge", style="About.TLabel")
-        name_label.pack(anchor="w", pady=(0, 5))
+        name_label.pack(anchor="w", pady=(0, 2))
 
         # Version and Author
-        info_text = f"Version: {APP_VERSION}\nAuthor: Damned Angel + Gemini AI"
-        info_label = ttk.Label(text_frame, text=info_text, justify=tk.LEFT)
+        version_text = f"Version: {APP_VERSION}\nAuthor: Damned Angel\nMade with Gemini AI"
+        info_label = ttk.Label(text_frame, text=version_text, justify=tk.LEFT)
         info_label.pack(anchor="w")
+
+        ttk.Separator(text_frame, orient='horizontal').pack(fill='x', pady=10)
+
+        # The "Social Contract" Friendly Note
+        attribution_title = ttk.Label(text_frame, text="Attribution Request", font=("TkDefaultFont", 9, "bold"))
+        attribution_title.pack(anchor="w")
+        
+        # A Text widget is used (instead of a Label) so part of the sentence can be bold.
+        note_font = font.nametofont("TkDefaultFont").copy()
+        note_font.configure(size=9)
+        note_bold_font = note_font.copy()
+        note_bold_font.configure(weight="bold")
+        note_bg = ttk.Style().lookup("TFrame", "background") or about_win.cget("background")
+        note_text = tk.Text(text_frame, width=48, height=4, wrap="word", font=note_font,
+                            bg=note_bg, relief="flat", borderwidth=0, highlightthickness=0,
+                            padx=0, pady=0, cursor="arrow")
+        note_text.tag_configure("bold", font=note_bold_font)
+        note_text.insert("end", "Creating a game with this? I'd love a shout-out! Mentioning ")
+        note_text.insert("end", "\"Made with MSX Tile Forge\"", "bold")
+        note_text.insert("end", " in your credits is not mandatory, but ")
+        note_text.insert("end", "it costs you nothing and helps the project grow, and is greatly appreciated.", "bold")
+        note_text.configure(state="disabled")
+        note_text.pack(anchor="w", pady=(2, 10))
+
+        # Legal Notice (GPLv3 + Section 7b)
+        license_text = ("This program is released under the GNU GPLv3.\n"
+                        "Pursuant to Section 7(b), original author attributions "
+                        "must be preserved in this interface.")
+        license_label = ttk.Label(text_frame, text=license_text, font=("TkDefaultFont", 8), foreground="grey40")
+        license_label.pack(anchor="w", pady=(0, 5))
         
         # Contribution Info Frame
         contrib_frame = ttk.LabelFrame(text_frame, text="Contribute")

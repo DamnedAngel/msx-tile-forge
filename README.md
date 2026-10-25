@@ -401,7 +401,7 @@ Clear descriptions and, where applicable, steps to reproduce issues are greatly 
 
 ## License
 
-This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**, with one additional term under Section 7(b): any modified version must preserve the original copyright notice and the author attribution "Damned Angel" in the Appropriate Legal Notices it displays (e.g. the "About" dialog).
 
-The full text of the license should be included with the software (typically in a `LICENSE` or `COPYING` file). It can also be found online at:
-[https://www.gnu.org/licenses/agpl-3.0.en.html](https://www.gnu.org/licenses/agpl-3.0.en.html)
+The full text of the license is included in the `LICENSE` file. It can also be found online at:
+[https://www.gnu.org/licenses/gpl-3.0.html](https://www.gnu.org/licenses/gpl-3.0.html)

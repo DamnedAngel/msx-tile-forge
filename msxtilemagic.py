@@ -1,5 +1,36 @@
 #!/usr/bin/env python3
 
+# MSX Tile Forge - A tile and map editor for MSX2
+# Copyright (C) 2026 DamnedAngel
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# ------------------------------------------------------------------------------
+# ADDITIONAL TERMS (GNU GPL v3, Section 7(b)):
+# Any modified version of this program must preserve the original copyright
+# notice and the author attribution "Damned Angel" in the Appropriate Legal
+# Notices it displays (e.g. the "About" dialog). No other restrictions are
+# added to the GNU General Public License.
+#
+# ------------------------------------------------------------------------------
+# OPTIONAL ATTRIBUTION REQUEST:
+# If you use MSX Tile Forge to create assets for a published project or game, 
+# a credit line such as "Graphics created with MSX Tile Forge by [Your Name]" 
+# is not required by this license, but would be greatly appreciated by the 
+# author and helps support the tool's development.
+# ------------------------------------------------------------------------------
+
 # --- Program Identification ---
 APP_VERSION = "<unreleased>"
 SCRIPT_NAME = "MSX Tile Magic"
