@@ -8,13 +8,13 @@ An integrated Palette, Tile, Supertile and Map Editor for MSX, built with Python
 
 ## Introduction
 
-MSX Tile Forge is a desktop application created to assist in the development of graphical assets for MSX2 computers and similar retro systems that utilize tile-based graphics and have specific palette limitations. It provides an integrated environment for designing 16-color palettes, creating 8x8 pixel tiles with row-specific colors, composing supertiles (e.g., 4x4, but dimensions are project-configurable) from these tiles, and arranging them into larger game maps. The tool aims to streamline the asset creation workflow for retro game developers, specially for MSX.
+**MSX Tile Forge** is a desktop application created to assist in the development of graphical assets for MSX2 computers and similar retro systems that utilize tile-based graphics and have specific palette limitations. It provides an integrated environment for designing 16-color palettes, creating 8x8 pixel tiles with row-specific colors, composing supertiles (e.g., 4x4, but dimensions are project-configurable) from these tiles, and arranging them into larger game maps. The tool aims to streamline the asset creation workflow for retro game developers, specially for MSX.
 
 All project components (palette, tiles, supertiles, map) can be saved and loaded individually or as a complete project, using custom binary file formats designed for ease of use and integration into MSX development pipelines.
 
 ## Downloads
 
-You can download pre-compiled, ready-to-run versions of MSX Tile Forge for various operating systems.
+You can download pre-compiled, ready-to-run versions of **MSX Tile Forge** for various operating systems.
 
 *   **Latest Official Release & Release Candidates:** For the most stable versions, please visit the **[Releases Page](https://github.com/DamnedAngel/msx-tile-forge/releases)**.
 
@@ -114,7 +114,7 @@ You can download pre-compiled, ready-to-run versions of MSX Tile Forge for vario
 
     *   **Import Tiles from Image (`Import/Export -> Import Tiles from Image...`):** Generates a new tileset from an image file. This feature **replaces the current project palette** with a new, optimized 16-color palette generated from the image. It then presents all generated tiles in a selection dialog, allowing you to choose which ones to **append** to your current project's tileset. This uses the same powerful analysis engine as the full project importer, with options for palette constraints, optimization, and more.
 
-    *   **Import Tiles from File (`Import/Export -> Import Tiles from File...`):** Allows you to add tiles from another MSX Tile Forge project. It opens a `.SC4Tiles` file, displays all the tiles it contains using the *current project's active palette*, and lets you select which ones to **append** to your current tileset. This is useful for building a "master" tileset from multiple sources.
+    *   **Import Tiles from File (`Import/Export -> Import Tiles from File...`):** Allows you to add tiles from another **MSX Tile Forge** project. It opens a `.SC4Tiles` file, displays all the tiles it contains using the *current project's active palette*, and lets you select which ones to **append** to your current tileset. This is useful for building a "master" tileset from multiple sources.
 
     *   **ROM Importer (`Import -> Import Tiles from ROM...`):** Imports 8x8, 1-bit-per-pixel tile data directly from a binary file (e.g., a ROM dump). Features a visual browser, live preview, advanced multi-selection (Click, Shift+Click, Ctrl+Click), and controls for preview colors and the base byte offset.
         *   **Per-Selection Properties:** This is the key feature of the importer. When you select a tile or a range of tiles, the **current Fine Offset and FG/BG Colors are saved with that selection**. This allows you to select tiles from different parts of the ROM file (using different offsets) and assign them different colors, all within a single import operation. The final import will use the specific properties saved for each tile.
@@ -136,7 +136,7 @@ You can download pre-compiled, ready-to-run versions of MSX Tile Forge for vario
 
 ## Installation
 
-Getting MSX Tile Forge up and running is straightforward. You can choose between using pre-compiled binaries for convenience or running directly from the source code if you are a developer.
+Getting **MSX Tile Forge** up and running is straightforward. You can choose between using pre-compiled binaries for convenience or running directly from the source code if you are a developer.
 
 ### Choosing a Version
 
@@ -176,7 +176,7 @@ This option is for users who are comfortable with Python and the command line.
 
 ## User Guide
 
-This manual provides an overview of MSX Tile Forge's functionalities, organized by its main interface components.
+This manual provides an overview of **MSX Tile Forge**'s functionalities, organized by its main interface components.
 
 ### Global Operations (Menu Bar & General UX)
 
@@ -332,7 +332,7 @@ This feature (accessible via `Import -> Import Tiles from ROM...`) allows loadin
 
 ### 6. Importing Project from Image
 
-This powerful feature (accessible via `Import -> Import Project from Image...`) generates a complete, new MSX Tile Forge project by analyzing a standard image file (e.g., PNG, BMP). It replaces the entire current project.
+This powerful feature (accessible via `Import -> Import Project from Image...`) generates a complete, new **MSX Tile Forge** project by analyzing a standard image file (e.g., PNG, BMP). It replaces the entire current project.
 
 The import process uses the `msxtilemagic.py` script to perform the complex analysis and asset generation, providing a dialog with extensive options to control the outcome:
 *   **Palette Constraints:** You can force the importer to use specific colors from your currently active palette (`Fixed`), prevent certain palette slots from being used (`Blocked`), or let the script choose the best color for a slot (`Auto`).
@@ -429,7 +429,7 @@ Project component files created with this version (`.SC4Pal`, `.SC4Tiles`, `.SC4
 
 ## Contributing
 
-Contributions to MSX Tile Forge are welcome! If you have bug reports, feature suggestions, or would like to contribute code:
+Contributions to **MSX Tile Forge** are welcome! If you have bug reports, feature suggestions, or would like to contribute code:
 
 1.  **Issues:** Please feel free to open an issue on the project's GitHub repository to discuss bugs or propose new features.
 2.  **Pull Requests:** For code contributions, please fork the repository, make your changes in a separate branch, and then submit a pull request for review.
@@ -447,7 +447,7 @@ The full text of the license is included in the `LICENSE` file. It can also be f
 
 ### What this means for you
 
-*   **Your own work is yours.** The license covers MSX Tile Forge itself, not what you create with it. Projects, maps, images and the files you export (binaries, `.s` assembly includes, `.h` C headers) are yours; you can use them in any game, free or commercial, with no license obligation.
+*   **Your own work is yours.** The license covers **MSX Tile Forge** itself, not what you create with it. Projects, maps, images and the files you export (binaries, `.s` assembly includes, `.h` C headers) are yours; you can use them in any game, free or commercial, with no license obligation.
 *   **Credit is optional, but appreciated.** Creating a game with this? I'd love a shout-out! Mentioning **"Made with MSX Tile Forge"** in your game's credits, interface, source code and/or documentation is not mandatory, but **it costs you nothing and helps the project grow, and is greatly appreciated.**
-*   **Modified versions must keep the author's credit.** If you distribute a modified version of MSX Tile Forge, it must keep the original copyright notice and the "Damned Angel" attribution in its legal notices (e.g., the About dialog), and must itself be released under the GPL-3.0.
+*   **Modified versions must keep the author's credit.** If you distribute a modified version of **MSX Tile Forge**, it must keep the original copyright notice and the "Damned Angel" attribution in its legal notices (e.g., the About dialog), and must itself be released under the GPL-3.0.
 *   **Artwork.** The icon and splash images in `Resources/` are distributed with the project as part of it, under the same license as the code.
