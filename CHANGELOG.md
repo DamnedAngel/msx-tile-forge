@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [01.00.00] - YYYY-MM-DD
+## [01.00.00] - 2026-10-25
 
 ### Core Editors
 

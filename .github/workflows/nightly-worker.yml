@@ -18,7 +18,7 @@ jobs:
   #########################################
   generate-version:
     name: Generate Version & Filenames
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       version_string: ${{ steps.versioning.outputs.VERSION_STRING }}
       debian_version: ${{ steps.versioning.outputs.DEBIAN_VERSION }}
@@ -58,10 +58,10 @@ jobs:
   prepare-source:
     name: Prepare Source Code
     needs: generate-version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout target branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.branch }}
 
@@ -72,7 +72,7 @@ jobs:
           debian_version: ${{ needs.generate-version.outputs.debian_version }}
 
       - name: Upload prepared source as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ needs.generate-version.outputs.prepared_source_artifact_name }}
           path: .
@@ -119,15 +119,15 @@ jobs:
   publish:
     name: Publish to Internet Archive
     needs: [generate-version, build-linux, build-windows, build-macos, build-source]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout target branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.branch }}
 
       - name: Download all final build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: final-packages
 

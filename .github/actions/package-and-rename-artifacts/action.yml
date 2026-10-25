@@ -15,7 +15,7 @@ runs:
   using: 'composite'
   steps:
     - name: Download all build artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         path: artifacts
         # The faulty 'pattern' key has been removed.
