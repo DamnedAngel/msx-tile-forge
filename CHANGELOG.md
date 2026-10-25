@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [<unreleased>] - YYYY-MM-DD
+## [01.00.00] - YYYY-MM-DD
 
 ### Core Editors
 
@@ -56,3 +56,9 @@ All notable changes to this project will be documented in this file.
 -   **Developer Export:** Can export project data to raw binary and generate assembly (`.s`) and C header (`.h`) files via `msxtileexport.py`.
 -   **Standalone Helper Scripts:** Provides command-line scripts (`tilerandomizer.py`, `supertilerandomizer.py`) for programmatic asset manipulation.
 -   **Versioning:** The version string is no longer hardcoded and is now dynamically inserted at build time.
+
+### Licensing
+
+-   **License:** MSX Tile Forge is licensed under the **GNU General Public License v3.0 or later**, with an additional term under Section 7(b): modified versions must preserve the original copyright notice and the "Damned Angel" author attribution in the legal notices they display (e.g., the About dialog). All source files carry the corresponding header.
+-   **Your output is yours:** projects and exported files (binaries, assembly and C headers) carry no license obligation.
+-   **About dialog:** updated credits ("Made with Gemini AI") and an optional "Made with MSX Tile Forge" attribution request.
